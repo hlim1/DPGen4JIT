@@ -1,0 +1,40 @@
+{
+    "methods": {
+        "number1": ["toLocaleString", "toString"],
+        "number2": ["toExponential", "toFixed", "toPrecision", "valueOf"],
+        "boolean": ["valueOf"],
+        "string1": ["charAt", "charCodeAt", "substr", "substring"],
+        "string2": ["startsWith", "endsWith", "localeCompare"],
+        "string3": ["indexOf", "lastIndexOf"],
+        "string4": ["concat", "length", "match", "replace", "search", "slice", "split", "toLocaleLowerCase", "toLocaleUpperCase", "toLowerCase", "toString", "toUpperCase", "valueOf"],
+        "html": ["anchor", "big", "blink", "bold", "fixed", "fontcolor", "fontsize", "italics", "link", "small", "strike", "sub", "sup"],
+        "array": ["concat", "every", "filter", "forEach", "indexOf", "join", "lastIndexOf", "map", "pop", "push", "reduce", "reduceRight", "reverse", "shift", "slice", "some", "toSource", "sort", "splice", "toString", "unshift"],
+        "date": ["Date", "getDate", "getDay", "getFullYear", "getHours", "getMilliseconds", "getMinutes", "getMonth", "getSeconds", "getTime", "getTimezoneOffset", "getUTCDate", "getUTCDay", "getUTCFullYear", "getUTCHours", "getUTCMilliseconds", "getUTCMinutes", "getUTCMonth", "getUTCSeconds", "getYear", "setDate", "setFullYear", "setHours", "setMilliseconds", "setMinutes", "setMonth", "setSeconds", "setTime", "setUTCDate()", "setUTCFullYear", "setUTCHours", "setUTCMilliseconds", "setUTCMinutes", "setUTCMonth", "setUTCSeconds", "setYear", "toDateString", "toGMTString", "toLocaleDateString", "toLocaleFormat", "toLocaleTimeString", "toSource", "toString", "toTimeString", "toUTCString", "valueOf"],
+        "date-static": ["parse", "UTC"],
+        "math1": ["abs", "acos", "acosh", "asin", "asinh", "atan", "atanh", "ceil", "cos", "exp", "floor", "log",  "round", "fround", "sin", "sqrt", "tan", "expm1", "clz32", "cbrt", "hypot", "log10", "log1p", "log2", "sign", "sinh", "tanh", "trunc"],
+        "math2": ["atan2", "pow", "hypot", "imul"], 
+        "math3": ["max", "min", "hypot"],
+        "math4": ["random"],
+        "regular-expression1": ["exec", "test", "match", "matchAll", "search", "split"],
+        "regular-expression2": ["replace", "replaceAll"],
+        "parser": ["parseInt", "parseFloat"],
+        "std-objects1": ["BigInt"],
+        "std-objects2": ["Int16Array", "Int32Array", "Uint16Array", "Uint32Array", "Uint8Array"],
+        "std-objects3": ["isFinite", "isNaN"],
+        "std-objects4": ["BigInt64Array", "BigUint64Array"],
+        "fundamental-objects": ["Object", "Function", "Boolean", "Symbol"]
+    },
+    "operators": {
+        "update": ["++", "--"],
+        "unary1": ["+", "-"],
+        "unary2": ["!", "~"],
+        "binary": ["+", "-", "*", "/", "%", "**"],
+        "comparison": [">", "<", ">=", "<=", "==", "!=", "==="],
+        "logical": ["&&", "||"],
+        "bitwise1": ["&", "|", "^"],
+        "bitwise2": ["<<", ">>", ">>>"],
+        "assignment": ["+=", "-=", "*=", "^=", "/=", "%=", "&=", "|=", "&&=", "**=", "??=", "||=", ">>=", ">>>="]
+    },
+    "data-types": ["int", "str", "bool", "BigInt"],
+    "object-types": ["array", "map"]
+}
