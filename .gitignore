@@ -1,4 +1,6 @@
 Tests/
 ExtFuzzers/
 JSEngines/
+__pycache__/
 *.out
+*.swp
