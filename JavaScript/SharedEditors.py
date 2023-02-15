@@ -98,6 +98,23 @@ def treeScanner(ast: dict, count: int):
 
     return count
 
+def assignIds(ast: dict, count: int, id2node: dict):
+    """
+    """
+
+    if ast:
+        for key, value in ast.items():
+            if isinstance(value, list):
+                for elem in value:
+                    count = assignIds(elem, count, id2node) + 1
+            elif isinstance(value, dict):
+                count = assignIds(value, count, id2node) + 1
+
+    if not ast or ast["type"] in OPERATIONS:
+        id2node[count] = ast
+
+    return count
+
 def treeModifier(
         ast: dict, count: int, target_node_id: int, accept: list,
         need_new_target: list, langInfo: dict, is_loop_edit: list,

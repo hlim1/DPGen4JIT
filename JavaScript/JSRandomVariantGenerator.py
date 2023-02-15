@@ -20,11 +20,8 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-import GenVariants.JavaScript.JSAstGenerator as JSAstG
-import GenVariants.JavaScript.SharedEditors as Shared
-
-#import JSAstGenerator as JSAstG
-#import SharedEditors as Shared
+import JavaScript.JSAstGenerator as JSAstG
+import JavaScript.SharedEditors as Shared
 
 def RandomVariantGenerator(
         variantsPath: str, astDirPath: str, fileBase: str, originalJS: str, number: int,

@@ -17,11 +17,9 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-import GenVariants.JavaScript.JSAstGenerator as JSAstG
-import GenVariants.JavaScript.SharedEditors as Shared
-import GenVariants.JavaScript.JSVariantLearning as JSVariantLearning
-#import JSAstGenerator as JSAstG
-#import SharedEditors as Shared
+import JavaScript.JSAstGenerator as JSAstG
+import JavaScript.SharedEditors as Shared
+import JavaScript.JSVariantLearning as JSVariantLearning
 
 def ControlledVariantGenerator(
         rootPath: str, inputsPath: str, astDirPath: str, fileBase: str, originalAST: dict, number: int,
