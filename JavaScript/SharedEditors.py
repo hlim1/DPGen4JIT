@@ -124,6 +124,32 @@ def assignIds(ast: dict, depth: int, id2node: dict):
 
     return depth
 
+def compareTrees(t1: dict, t2: dict):
+    """This function compares the two trees and returns the node id(s)
+    of t1 that is different to t2.
+
+    args:
+        t1 (dict): first tree.
+        t2 (dict): secound tree.
+
+    returns:
+        (list) list of t1 node ids.
+    """
+
+    t1_id2node = {}
+    t2_id2node = {}
+
+    count = assignIds(t1, 0, t1_id2node)
+    count = assignIds(t2, 0, t2_id2node)
+
+    ids = []
+
+    for id, node in t1_id2node.items():
+        if node !=  t2_id2node[id]:
+            ids.append(id)
+
+    return ids
+
 def treeModifier(
         ast: dict, depth: int, target_node_id: int, accept: list,
         need_new_target: list, langInfo: dict, is_loop_edit: list,
