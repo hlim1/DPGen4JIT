@@ -71,18 +71,18 @@ def ast_editor(ast: dict, target_node_id: int, langInfo: dict, id2edit: dict):
     accept = [False]
 
     while accept[0] == False and need_new_target[0] == False:
-        count = treeModifier(ast, 1, target_node_id, accept, need_new_target, langInfo, is_loop_edit, id2edit)
+        depth = treeModifier(ast, 1, target_node_id, accept, need_new_target, langInfo, is_loop_edit, id2edit)
 
     return need_new_target[0]
 
-def treeScanner(ast: dict, count: int):
+def treeScanner(ast: dict, depth: int):
     """This function recursively traverses the ast and
     returns the number of nodes in the tree. For example,
     each dictionary element is one node in the tree.
 
     args:
       ast (dict): ast tree.
-      count (int): number of node counter.
+      depth (int): number of node depther.
 
     returns:
       (int) number of nodes in the tree.
@@ -92,41 +92,50 @@ def treeScanner(ast: dict, count: int):
         for key, value in ast.items():
             if isinstance(value, list):
                 for elem in value:
-                    count = treeScanner(elem, count) + 1
+                    depth = treeScanner(elem, depth) + 1
             elif isinstance(value, dict):
-                count = treeScanner(value, count) + 1
+                depth = treeScanner(value, depth) + 1
 
-    return count
+    return depth
 
-def assignIds(ast: dict, count: int, id2node: dict):
-    """
+def assignIds(ast: dict, depth: int, id2node: dict):
+    """This function traverses the syntax tree using the DFS approach,
+    and assigns id to each node.
+
+    args:
+        ast (dict): ast tree.
+        depth (int): depth of tree.
+        id2node (dict): node id to node.
+
+    returns:
+        (int) current depth of tree.
     """
 
     if ast:
         for key, value in ast.items():
             if isinstance(value, list):
                 for elem in value:
-                    count = assignIds(elem, count, id2node) + 1
+                    depth = assignIds(elem, depth, id2node) + 1
             elif isinstance(value, dict):
-                count = assignIds(value, count, id2node) + 1
+                depth = assignIds(value, depth, id2node) + 1
 
     if not ast or ast["type"] in OPERATIONS:
-        id2node[count] = ast
+        id2node[depth] = ast
 
-    return count
+    return depth
 
 def treeModifier(
-        ast: dict, count: int, target_node_id: int, accept: list,
+        ast: dict, depth: int, target_node_id: int, accept: list,
         need_new_target: list, langInfo: dict, is_loop_edit: list,
         id2edit: dict
 ):
-    """This function recursively scans the tree until encounter
+    """This function recursively scans the tree until endepther
     the node that matches the passed nodeID. It then, calls
     appropriate function to modify the tree and returns.
 
     args:
       ast (dict): ast tree.
-      count (int): node id tracker.
+      depth (int): node id tracker.
       target_node_id (int): randomly selected node id.
       accept (list): single element list indicating holding boolean value
       that is False for tree fails to modified or True for tree was modified.
@@ -146,13 +155,13 @@ def treeModifier(
 
             if isinstance(value, list):
                 for elem in value:
-                    count = treeModifier(
-                                elem, count, target_node_id, accept,
+                    depth = treeModifier(
+                                elem, depth, target_node_id, accept,
                                 need_new_target, langInfo, is_loop_edit,
                                 id2edit) + 1
             elif isinstance(value, dict):
-                count = treeModifier(
-                            value, count, target_node_id, accept,
+                depth = treeModifier(
+                            value, depth, target_node_id, accept,
                             need_new_target, langInfo, is_loop_edit,
                             id2edit) + 1
             
@@ -162,22 +171,22 @@ def treeModifier(
 
     # If the current node is not a loop condition node and the node ID is
     # same as the target node id, check additional conditions.
-    if not is_loop_edit[0] and count == target_node_id:
+    if not is_loop_edit[0] and depth == target_node_id:
         # If the current node either has no ast property or has ast property
         # and the type is in the OPERATIONS list, which are the language
         # features that we are currently handling.
         if not ast or ast["type"] in OPERATIONS:
-            modifyElement(ast, langInfo, id2edit, count)
+            modifyElement(ast, langInfo, id2edit, depth)
             accept[0] = True
         # Otherwise, we need a new target ID to modify the node.
         elif not accept[0]:
             need_new_target[0] = True
     # If the target node is a loop node, then we skip to modify and request for
     # a new target ID to modify.
-    elif count == target_node_id and not accept[0]:
+    elif depth == target_node_id and not accept[0]:
         need_new_target[0] = True
 
-    return count
+    return depth
 
 def treeModifier2(ast: dict, nodeId: int, nodeIdsToAvoid: list, langInfo: dict, is_loop_edit: list):
     """
@@ -209,7 +218,7 @@ def treeModifier2(ast: dict, nodeId: int, nodeIdsToAvoid: list, langInfo: dict, 
 
     return nodeId
 
-def modifyElement(node: dict, langInfo: dict, id2edit: dict, count: int):
+def modifyElement(node: dict, langInfo: dict, id2edit: dict, depth: int):
     """This function modifies either binary expression's
     operator or the literal value.
 
@@ -224,19 +233,19 @@ def modifyElement(node: dict, langInfo: dict, id2edit: dict, count: int):
     if not node:
         node = literalGenerator("int")
     elif node["type"] == "UnaryExpression":
-        changeUnaryExpression(node, langInfo["operators"], id2edit, count)
+        changeUnaryExpression(node, langInfo["operators"], id2edit, depth)
     elif node["type"] == "BinaryExpression":
-        changeBinaryExpression(node, langInfo["operators"], id2edit, count)
+        changeBinaryExpression(node, langInfo["operators"], id2edit, depth)
     elif node["type"] == "ArrayExpression":
-        changeArrayExpression(node, langInfo["data-types"], langInfo, id2edit, count)
+        changeArrayExpression(node, langInfo["data-types"], langInfo, id2edit, depth)
     elif node["type"] == "ObjectExpression":
-        changeObjectExpression(node, langInfo["data-types"], langInfo["object-types"], langInfo, id2edit, count)
+        changeObjectExpression(node, langInfo["data-types"], langInfo["object-types"], langInfo, id2edit, depth)
     elif node["type"] == "Identifier":
         changeIdentifier(node, langInfo["methods"])
     elif node["type"] == "AssignmentExpression":
         changeAssignmentExpression(node, langInfo["operators"]["assignment"])
     elif node["type"] == "LogicalExpression":
-        changeLogicalExpression(node, langInfo["operators"]["logical"], id2edit, count)
+        changeLogicalExpression(node, langInfo["operators"]["logical"], id2edit, depth)
     elif node["type"] == "Literal":
         changeLiteral(node)
     elif node["type"] == "ThisExpression":
@@ -347,7 +356,7 @@ def changeLiteral(node: dict):
         # Update literal value with a randomly generated number.
         node["value"] = new_value
 
-def changeBinaryExpression(node: dict, operators: dict, id2edit: dict, count: int):
+def changeBinaryExpression(node: dict, operators: dict, id2edit: dict, depth: int):
     """This function changes the binary expression in the AST.
 
     args:
@@ -360,8 +369,8 @@ def changeBinaryExpression(node: dict, operators: dict, id2edit: dict, count: in
 
     current_op = node["operator"]
 
-    if count not in id2edit:
-        id2edit[count] = [current_op]
+    if depth not in id2edit:
+        id2edit[depth] = [current_op]
 
     sameTypeOps = []
     for opType, opsList in operators.items():
@@ -373,16 +382,16 @@ def changeBinaryExpression(node: dict, operators: dict, id2edit: dict, count: in
         new_op = random.choice(sameTypeOps)
         while (
                 new_op == current_op 
-                and new_op in id2edit[count]
-                and len(id2edit[count]) < len(sameTypeOps)
+                and new_op in id2edit[depth]
+                and len(id2edit[depth]) < len(sameTypeOps)
         ):
             new_op = random.choice(sameTypeOps)
 
-        if new_op not in id2edit[count]:
-            id2edit[count].append(new_op)
+        if new_op not in id2edit[depth]:
+            id2edit[depth].append(new_op)
             node["operator"] = new_op
 
-def changeUnaryExpression(node: dict, operators: dict, id2edit: dict, count: int): 
+def changeUnaryExpression(node: dict, operators: dict, id2edit: dict, depth: int): 
     """This function changes the unary expression in the AST.
 
     args:
@@ -395,8 +404,8 @@ def changeUnaryExpression(node: dict, operators: dict, id2edit: dict, count: int
     current_op = node["operator"]
     unaryList = None
 
-    if count not in id2edit:
-        id2edit[count] = [current_op]
+    if depth not in id2edit:
+        id2edit[depth] = [current_op]
 
     if current_op in operators["unary1"]:
         unaryList = operators["unary1"]
@@ -407,19 +416,19 @@ def changeUnaryExpression(node: dict, operators: dict, id2edit: dict, count: int
         new_op = random.choice(unaryList)
         while (
                 new_op == current_op 
-                and new_op in id2edit[count]
-                and len(id2edit[count]) < len(unaryList)
+                and new_op in id2edit[depth]
+                and len(id2edit[depth]) < len(unaryList)
         ):
             new_op = random.choice(unaryList)
 
-        if new_op not in id2edit[count]:
-            id2edit[count].append(new_op)
+        if new_op not in id2edit[depth]:
+            id2edit[depth].append(new_op)
             # Update operation with a randomly selected operator.
             node["operator"] = new_op
     else:
         print (f"WARNING: Unary operator {current_op} not in either 'unary1' or 'unary2' lists.")
 
-def changeArrayExpression(node: dict, dataTypes: list, langInfo: dict, id2edit: dict, count: int):
+def changeArrayExpression(node: dict, dataTypes: list, langInfo: dict, id2edit: dict, depth: int):
     """This function changes the array expression in the AST.
 
     args:
@@ -441,10 +450,10 @@ def changeArrayExpression(node: dict, dataTypes: list, langInfo: dict, id2edit: 
         target_idx = randint(0, arr_size-1)
         elem = node["elements"][target_idx]
 
-        modifyElement(elem, langInfo, id2edit, count)
+        modifyElement(elem, langInfo, id2edit, depth)
 
 def changeObjectExpression(
-        node: dict, dataTypes: list, objectTypes: list, langInfo: dict, id2edit:dict, count: int):
+        node: dict, dataTypes: list, objectTypes: list, langInfo: dict, id2edit:dict, depth: int):
     """This function changes the object (map) expression in the AST.
 
     args:
@@ -463,7 +472,7 @@ def changeObjectExpression(
         node["properties"].append(newProperty)
     else:
         selected_property = random.choice(node["properties"])
-        modifyElement(selected_property["value"], langInfo, id2edit, count)
+        modifyElement(selected_property["value"], langInfo, id2edit, depth)
 
 def changeUpdateExpression(node: dict, updateOps: list):
     """This function changes the update operators (++/--).
@@ -500,7 +509,7 @@ def changeAssignmentExpression(node: dict, assignmentOps: list):
     elif node["operator"] != "=":
         print(f"WARNING: Assignment operator {node['operator']} is not in the 'assignment' list.")
 
-def changeLogicalExpression(node: dict, logicalOps: list, id2edit: dict, count: int):
+def changeLogicalExpression(node: dict, logicalOps: list, id2edit: dict, depth: int):
     """this function changes the logical operators.
 
     args:
@@ -513,20 +522,20 @@ def changeLogicalExpression(node: dict, logicalOps: list, id2edit: dict, count: 
 
     current_op = node["operator"]
 
-    if count not in id2edit:
-        id2edit[count] = [current_op]
+    if depth not in id2edit:
+        id2edit[depth] = [current_op]
        
     if current_op in logicalOps:
         new_op = random.choice(logicalOps)
         while (
                 new_op == current_op 
-                and new_op in id2edit[count]
-                and len(id2edit[count]) < len(logicalOps)
+                and new_op in id2edit[depth]
+                and len(id2edit[depth]) < len(logicalOps)
         ):
             new_op = random.choice(logicalOps)
 
-        if new_op not in id2edit[count]:
-            id2edit[count].append(new_op)
+        if new_op not in id2edit[depth]:
+            id2edit[depth].append(new_op)
             node["operator"] = new_op
     else:
         print(f"WARNING: Logical operator {node['operator']} is not in the 'logical' list.")
