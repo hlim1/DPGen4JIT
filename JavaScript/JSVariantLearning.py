@@ -4,6 +4,7 @@
     Author: Anonymous.
 """
 
+import json
 import os, sys
 import subprocess
 
@@ -14,10 +15,11 @@ parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
 import JavaScript.JSAstGenerator as JSAstG
+import JavaScript.SharedEditors as SharedEditors
 
 JSEXT = ".js"
 
-def Learning(variantsPath: str, exeCommands: dict, variantId2editNodeId: dict):
+def Learning(variantsPath: str, exeCommands: dict, variantId2editNodeId: dict, seed_ast: dict, randASTsPath):
     """This function runs variants twice - once with the JIT compilation on
     and once without - then select the node ids to edit in the next phase.
 
@@ -51,7 +53,7 @@ def Learning(variantsPath: str, exeCommands: dict, variantId2editNodeId: dict):
     # If there is not variant id to edited node id dictionary,
     # we populate the dictionary during the learning phase.
     if not variantId2editNodeId:
-        pass
+        variantId2editNodeId = get_EditedNodeIds(seed_ast, randASTsPath)
 
     for variant in variants:
         if variant.endswith(JSEXT):
@@ -73,20 +75,24 @@ def Learning(variantsPath: str, exeCommands: dict, variantId2editNodeId: dict):
 
     return targetASTNodeIds, buggyVariantIDs, jitOnCommand, jitOffCommand
 
-def get_EditedNodeIds(variantPath: str):
+def get_EditedNodeIds(seed_ast: dict, randASTsPath: str):
     """
     """
 
     # Get the list of files under variants directory.
-    variants = os.listdir(variantsPath)
+    random_asts = os.listdir(randASTsPath)
 
-    for variant in variants:
-        if variant.endswith(JSEXT):
-            variant_path = f"{variantsPath}/{variant}"
-            with open(variant_path) as f:
-                code = f.read()
-                ast = JSAstG.ASTGenerate(code)
-    
+    variantId2editNodeId = {}
+
+    for fname in random_asts:
+        variantId = int(fname.split('__')[1].split('.')[0])
+        ast_path = f"{randASTsPath}/{fname}"
+        with open (ast_path) as f:
+            ast = json.load(f)
+            ids = SharedEditors.compareTrees(seed_ast, ast)
+            variantId2editNodeId[variantId] = ids[0]
+
+    return variantId2editNodeId
 
 def RunJITExe(commands: list):
     """This function runs the variant with the passed command under subprocess
