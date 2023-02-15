@@ -139,8 +139,8 @@ def compareTrees(t1: dict, t2: dict):
     t1_id2node = {}
     t2_id2node = {}
 
-    count = assignIds(t1, 0, t1_id2node)
-    count = assignIds(t2, 0, t2_id2node)
+    count = assignIds(t1, 1, t1_id2node)
+    count = assignIds(t2, 1, t2_id2node)
 
     ids = []
 
