@@ -7,6 +7,7 @@ import JavaScript.JSVariantLearning as JSVariantLearning
 import JavaScript.JSControlledVariantGenerator as JSControlledVariantGenerator
 import JavaScript.SharedEditors as SharedEditors
 import JavaScript.JSAstGenerator as JSAstG
+import Shared.SequenceAlignment as SEQAlign
 
 JSEXT = ".js"
 
