@@ -65,10 +65,12 @@ def create_dirs(root: str):
         os.makedirs(f"{root}/random")
     if not os.path.exists(f"{root}/random/asts"):
         os.makedirs(f"{root}/random/asts")
+    if not os.path.exists(f"{root}/controlled"):
+        os.makedirs(f"{root}/controlled")
+    if not os.path.exists(f"{root}/controlled/asts"):
+        os.makedirs(f"{root}/controlled/asts")
     if not os.path.exists(f"{root}/inputs"):
         os.makedirs(f"{root}/inputs")
-    if not os.path.exists(f"{root}/inputs/asts"):
-        os.makedirs(f"{root}/inputs/asts")
     if not os.path.exists(f"{root}/misc"):
         os.makedirs(f"{root}/misc")
 
@@ -104,12 +106,14 @@ def learn_inputs(
     return target_ast_node_ids, buggy_ipt_ids, jit_on, jit_off
 
 def get_controlled_inputs(
-        root_path: str, user_n: int, target_ast_node_ids: list, seed_file_base: str, 
-        seed_ast: dict, language_info: dict, jit_on: list, jit_off: list, 
-        controlled_ipt_dir: str):
+        root_path: str, user_n: int, 
+        controlled_ipt_dir: str, controlled_ast_dir: str,
+        target_ast_node_ids: list, seed_file_base: str, 
+        seed_ast: dict, language_info: dict, jit_on: list, jit_off: list):
 
     last_ipt_id = JSControlledVariantGenerator.GenerateInputs(
                         root_path, user_n, 
+                        controlled_ipt_dir, controlled_ast_dir,
                         target_ast_node_ids, seed_file_base, 
                         seed_ast, language_info, jit_on, jit_off)
 
@@ -118,6 +122,7 @@ def get_controlled_inputs(
     if len(buggy_ids) < user_n:
         JSControlledVariantGenerator.GenerateBuggies(
                         root_path, user_n, 
+                        controlled_ipt_dir, controlled_ast_dir,
                         target_ast_node_ids, seed_file_base, 
                         seed_ast, language_info, jit_on, jit_off, last_ipt_id)
 
@@ -169,8 +174,9 @@ def main():
 
     random_ipt_dir = f"{root_path}/random"
     random_ast_dir = f"{root_path}/random/asts"
-    controlled_ipt_dir = f"{root_path}/inputs"
-    controlled_ast_dir = f"{root_path}/inputs/asts"
+    controlled_ipt_dir = f"{root_path}/controlled"
+    controlled_ast_dir = f"{root_path}/controlled/asts"
+    inputs_dir = f"{root_path}/inputs"
 
     create_dirs(root_path)
 
@@ -201,9 +207,11 @@ def main():
         ) = learn_inputs(random_ipt_dir, arguments, ipt_id2edit_node_id, seed_ast, random_ast_dir)
         # Select inputs generated in a controlled way.
         get_controlled_inputs(
-                root_path, user_n, target_ast_node_ids, 
+                root_path, user_n, 
+                controlled_ipt_dir, controlled_ast_dir,
+                target_ast_node_ids, 
                 seed_file_base, seed_ast, language_info, 
-                jit_on, jit_off, controlled_ipt_dir)
+                jit_on, jit_off)
         # Classify inputs.
         buggy_ids, nonbuggy_ids = classify_inputs(controlled_ipt_dir, jit_on, jit_off)
         print (f"List of buggy input ids: {buggy_ids}")

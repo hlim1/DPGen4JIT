@@ -22,9 +22,25 @@ import JavaScript.SharedEditors as Shared
 import JavaScript.JSVariantLearning as JSVariantLearning
 
 def GenerateInputs(
-        rootPath: str, user_n: int, targetNodeIds: list, fileBase: str, seed_ast: dict,
+        rootPath: str, user_n: int, inputsPath: str, astDirPath: str, 
+        targetNodeIds: list, fileBase: str, seed_ast: dict,
         language_info: dict, jitOnCommand: list, jitOffCommand: list):
-    """
+    """This function (attempts to) generate user specified N*2 number of inputs.
+
+    args:
+        rootPath (str): root directory path.
+        inputsPath (str): directory where all input variants will be stored.
+        astDirPath (str): directory where all asts will be stored.
+        user_n (int): user-specified number to generate N number of variants.
+        targetNodeIds (list): list of target node ids to edit.
+        fileBase (str): name of the original input file without the extension.
+        seed_ast (dict): AST of the original input program.
+        language_info (dict): information about the JS language, such as types and methods, etc.
+        jitOnCommand (list): command to execute VM with jit compilation on.
+        jitOffCommand (list): command to execute VM with jit compilation off.
+
+    returns:
+        None.
     """
 
     astFilePaths = []
@@ -37,24 +53,27 @@ def GenerateInputs(
 
     variantId = 1
     for astVariant in astVariants:
-        variantFilePath = f"{rootPath}/inputs/asts/{fileBase}-variant__{variantId}.json"
+        variantFilePath = f"{astDirPath}/{fileBase}-variant__{variantId}.json"
         astFilePaths.append(variantFilePath)
         with open(variantFilePath, 'w') as ast_f:
             json.dump(astVariant, ast_f)
         variantId += 1
 
     # Generate JS code variants based on the generated AST variants.
-    Shared.JSCodeGenerator(f"{rootPath}/inputs", astFilePaths)
+    Shared.JSCodeGenerator(inputsPath, astFilePaths)
 
     return variantId
 
 def GenerateBuggies(
-        rootPath: str, user_n: int, targetNodeIds: list, fileBase: str, seed_ast: dict,
-        language_info: dict, jitOnCommand: list, jitOffCommand: list, last_ipt_id: int):
+        rootPath: str, user_n: int, inputsPath: str, astDirPath: str, 
+        targetNodeIds: list, fileBase: str, seed_ast: dict, language_info: dict, 
+        jitOnCommand: list, jitOffCommand: list, last_ipt_id: int):
     """This function (attempts to) generate user specified N number of buggy inputs.
 
     args:
         rootPath (str): root directory path.
+        inputsPath (str): directory where all input variants will be stored.
+        astDirPath (str): directory where all asts will be stored.
         user_n (int): user-specified number to generate N number of variants.
         targetNodeIds (list): list of target node ids to edit.
         fileBase (str): name of the original input file without the extension.
@@ -93,14 +112,14 @@ def GenerateBuggies(
     astFilePaths = []
     ipt_id = last_ipt_id
     for ast in astVariants:
-        variantFilePath = f"{rootPath}/inputs/asts/{fileBase}-variant__{ipt_id}.json"
+        variantFilePath = f"{astDirPath}/{fileBase}-variant__{ipt_id}.json"
         astFilePaths.append(variantFilePath)
         with open(variantFilePath, 'w') as ast_f:
             json.dump(ast, ast_f)
         ipt_id += 1
 
     # Generate JS code variants based on the generated AST variants.
-    Shared.JSCodeGenerator(f"{rootPath}/inputs", astFilePaths)
+    Shared.JSCodeGenerator(inputsPath, astFilePaths)
 
 def ControlledVariantGenerator(
         rootPath: str, inputsPath: str, astDirPath: str, fileBase: str, originalAST: dict, 
