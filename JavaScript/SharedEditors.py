@@ -47,7 +47,14 @@ def JSCodeGenerator(rootPath: str, astFilePaths: list):
         subprocess.run([NODEJS, JSCODEGENERATOR, astFilePath, JSCodeFilePath])
 
 def SingleJSCodeGenerator(astpath: str, jspath: str):
-    """
+    """This function generates Javascript code from the ast.
+
+    args:
+        astPath (str): path to ast file.
+        jspath (str): path to javascript file path.
+
+    returns:
+        None.
     """
 
     subprocess.run([NODEJS, JSCODEGENERATOR, astpath, jspath])
@@ -58,9 +65,9 @@ def ast_editor(ast: dict, target_node_id: int, langInfo: dict, id2edit: dict):
 
     args:
       ast (dict): original PoC's syntax tree.
-      target_node_id (int):
+      target_node_id (int): target node id to edit.
       langInfo (dict): information about the JS language, such as types and methods, etc.
-      id2edit (dict):
+      id2edit (dict): node id to edited node.
 
     returns:
       None.
@@ -71,7 +78,9 @@ def ast_editor(ast: dict, target_node_id: int, langInfo: dict, id2edit: dict):
     accept = [False]
 
     while accept[0] == False and need_new_target[0] == False:
-        depth = treeModifier(ast, 1, target_node_id, accept, need_new_target, langInfo, is_loop_edit, id2edit)
+        depth = treeModifier(
+                    ast, 1, target_node_id, accept, need_new_target, 
+                    langInfo, is_loop_edit, id2edit)
 
     return need_new_target[0]
 
@@ -214,8 +223,22 @@ def treeModifier(
 
     return depth
 
-def treeModifier2(ast: dict, nodeId: int, nodeIdsToAvoid: list, langInfo: dict, is_loop_edit: list):
-    """
+def treeModifier2(
+        ast: dict, nodeId: int, nodeIdsToAvoid: list, langInfo: dict, is_loop_edit: list,
+        jit_on: list, jit_off: list):
+    """This function is for generating a buggy input variant.
+    This function modifies all nodes except the nodes that can changes the buggy behavior of the
+    original input, i.e., changing the node will remove the buggy behavior.
+
+    args:
+        ast (dict): ast tree.
+        nodeId (int): node id.
+        nodeId2ToAvoid (list) list of node ids to avoid from chaning.
+        langInfo (dict): language information.
+        is_loop_edit (list): flag to indicate whether the current node is a loop node or not.
+
+    returns
+        (int) current node id.
     """
 
     if ast:
@@ -228,9 +251,13 @@ def treeModifier2(ast: dict, nodeId: int, nodeIdsToAvoid: list, langInfo: dict, 
 
             if isinstance(value, list):
                 for elem in value:
-                    nodeId = treeModifier2(elem, nodeId, nodeIdsToAvoid, langInfo, is_loop_edit)+1
+                    nodeId = treeModifier2(
+                                elem, nodeId, nodeIdsToAvoid, langInfo, is_loop_edit,
+                                jit_on, jit_off)+1
             elif isinstance(value, dict):
-                nodeId = treeModifier2(value, nodeId, nodeIdsToAvoid, langInfo, is_loop_edit)+1
+                nodeId = treeModifier2(
+                                value, nodeId, nodeIdsToAvoid, langInfo, is_loop_edit,
+                                jit_on, jit_off)+1
             else:
                 pass
             
@@ -265,7 +292,9 @@ def modifyElement(node: dict, langInfo: dict, id2edit: dict, depth: int):
     elif node["type"] == "ArrayExpression":
         changeArrayExpression(node, langInfo["data-types"], langInfo, id2edit, depth)
     elif node["type"] == "ObjectExpression":
-        changeObjectExpression(node, langInfo["data-types"], langInfo["object-types"], langInfo, id2edit, depth)
+        changeObjectExpression(
+                node, langInfo["data-types"], langInfo["object-types"], 
+                langInfo, id2edit, depth)
     elif node["type"] == "Identifier":
         changeIdentifier(node, langInfo["methods"])
     elif node["type"] == "AssignmentExpression":
@@ -691,3 +720,36 @@ def mapGenerator():
     map = {"type": "ObjectExpression", "properties": []}
 
     return map
+
+##
+
+def checkModified(ast_copy: dict, rootPath: str, jitOnCommand: list, jitOffCommand: list):
+    """
+    """
+
+    temporary_ast_path = f"{rootPath}/misc/temp_ast.json"
+    with open(temporary_ast_path, 'w') as ast_f:
+        json.dump(ast_copy, ast_f)
+    temporary_js_path = f"{rootPath}/misc/temp_js.js"
+
+    Shared.SingleJSCodeGenerator(temporary_ast_path, temporary_js_path)
+
+    jitOnCommand[-1] = temporary_js_path
+    jitOffCommand[-1] = temporary_js_path
+
+    jitOnOut = JSVariantLearning.RunJITExe(jitOnCommand)
+    jitOffOut = JSVariantLearning.RunJITExe(jitOffCommand)
+
+    is_buggy = True
+    if (
+            str(jitOnOut.returncode) == '0' 
+            and jitOnOut.stdout == jitOffOut.stdout
+    ):
+        is_buggy = False
+    elif (
+            str(jitOnOut.returncode) != '0' 
+            and jitOnOut.stdout == jitOffOut.stdout
+    ):
+        is_buggy = False
+
+    return is_buggy

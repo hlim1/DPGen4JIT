@@ -19,7 +19,9 @@ import JavaScript.SharedEditors as SharedEditors
 
 JSEXT = ".js"
 
-def Learning(variantsPath: str, exeCommands: dict, variantId2editNodeId: dict, seed_ast: dict, randASTsPath):
+def Learning(
+        variantsPath: str, exeCommands: dict, variantId2editNodeId: dict, 
+        seed_ast: dict, randASTsPath):
     """This function runs variants twice - once with the JIT compilation on
     and once without - then select the node ids to edit in the next phase.
 
@@ -68,7 +70,10 @@ def Learning(variantsPath: str, exeCommands: dict, variantId2editNodeId: dict, s
             jitOffOut = RunJITExe(jitOffCommand)
 
             # Analyze the results and get a set of target AST node IDs.
-            is_buggy = ResultAnalyzer(variantId, jitOnOut, jitOffOut, variantId2editNodeId, targetASTNodeIds)
+            is_buggy = ResultAnalyzer(
+                            variantId, jitOnOut, 
+                            jitOffOut, variantId2editNodeId, 
+                            targetASTNodeIds)
 
             if is_buggy:
                 buggyVariantIDs.append(variantId)

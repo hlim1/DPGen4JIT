@@ -96,7 +96,7 @@ def randomASTVariantGenerator(originalAST: dict, number: int, langInfo: dict):
   
     # Call ast_editor function to modify the original input program's AST.
     for i in range(1, 10000):
-        if generated == number+1:
+        if generated == number*2:
             break
         else:
             ast_copy = copy.deepcopy(originalAST)
