@@ -116,7 +116,6 @@ def get_controlled_inputs(
     buggy_ids, nonbuggy_ids = classify_inputs(controlled_ipt_dir, jit_on, jit_off)
 
     if len(buggy_ids) < user_n:
-        print (f"len(buggy_ids) < user_n: {buggy_ids}")
         JSControlledVariantGenerator.GenerateBuggies(
                         root_path, user_n, 
                         target_ast_node_ids, seed_file_base, 

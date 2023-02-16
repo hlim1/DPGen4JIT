@@ -51,7 +51,7 @@ def GenerateInputs(
 def GenerateBuggies(
         rootPath: str, user_n: int, targetNodeIds: list, fileBase: str, seed_ast: dict,
         language_info: dict, jitOnCommand: list, jitOffCommand: list, last_ipt_id: int):
-    """
+    """This function (attempts to) generate user specified N number of buggy inputs.
 
     args:
         rootPath (str): root directory path.
