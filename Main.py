@@ -164,6 +164,32 @@ def classify_inputs(inputs_path: str, jit_on: list, jit_off: list):
 
     return buggy_ids, nonbuggy_ids
 
+def select_inputs(seed_ast: dict, controlled_ipt_dir: str):
+
+    id2node = {}
+    seed_id2nodeStr = {}
+
+    depth = SharedEditors.assignIds(seed_ast, 1, id2node)
+    for id, node in id2node.items():
+        seed_id2nodeStr[id] = str(node)
+
+    input_files = os.listdir(f"{controlled_ipt_dir}")
+    ast_files = os.listdir(f"{controlled_ipt_dir}/asts")
+
+    for ast_file in ast_files:
+        ast = load_json(f"{controlled_ipt_dir}/asts/{ast_file}")
+
+        id2nodeStr = {}
+        depth = SharedEditors.assignIds(ast, 1, id2node)
+        for id, node in id2node.items():
+            id2nodeStr[id] = str(node)
+
+        alignment = SEQAlign.SequenceAlignment(
+                                list(seed_id2nodeStr.values()),
+                                list(id2nodeStr.values()))
+
+    return
+
 def main():
     arguments_json = argument_parser()
     arguments = load_json(arguments_json)
@@ -217,6 +243,8 @@ def main():
         buggy_ids, nonbuggy_ids = classify_inputs(controlled_ipt_dir, jit_on, jit_off)
         print (f"List of buggy input ids: {buggy_ids}")
         print (f"List of non-buggy input ids: {nonbuggy_ids}")
+
+        select_inputs(seed_ast, controlled_ipt_dir)
 
     return
 
