@@ -161,20 +161,11 @@ def get_controlled_inputs(
         None.
     """
 
-    last_ipt_id = JSControlledVariantGenerator.GenerateInputs(
-                        root_path, user_n, 
-                        controlled_ipt_dir, controlled_ast_dir,
-                        target_ast_node_ids, seed_file_base, 
-                        seed_ast, language_info, jit_on, jit_off)
-
-    buggy_ids, nonbuggy_ids = classify_inputs(controlled_ipt_dir, jit_on, jit_off)
-
-    if len(buggy_ids) < user_n:
-        JSControlledVariantGenerator.GenerateBuggies(
-                        root_path, user_n, 
-                        controlled_ipt_dir, controlled_ast_dir,
-                        target_ast_node_ids, seed_file_base, 
-                        seed_ast, language_info, jit_on, jit_off, last_ipt_id)
+    JSControlledVariantGenerator.GenerateInputs(
+                    root_path, user_n, 
+                    controlled_ipt_dir, controlled_ast_dir,
+                    target_ast_node_ids, seed_file_base, 
+                    seed_ast, language_info, jit_on, jit_off)
 
 def classify_inputs(inputs_path: str, jit_on: list, jit_off: list):
     """This function classifies inputs into buggies and non-buggies.
@@ -252,10 +243,38 @@ def get_inputs_to_analyze(
     (
         selected_buggy_ids,
         selected_nonbuggy_ids
-    ) = SelectInputs.select_inputs(
+    ) = SelectInputs.move_inputs(
             seed_path, inputs_dir, controlled_ipt_dir, selected_buggy_ids, selected_nonbuggy_ids)
 
     return selected_buggy_ids, selected_nonbuggy_ids
+
+def check_selected_inputs(inputs_dir: str, jit_on: list, jit_off: list, selected_b: list, selected_nb: list):
+    """This function checks whether the selected inputs are correctly classified or not.
+
+    args:
+        inputs_dir (str): inputs directory.
+        jit_on (list): command-line to execute VM with JIT compilation on.
+        jit_off (list): command-line to execute VM with JIT compilation off.
+        selected_b (list): list of selected buggy ids.
+        selected_nb (list): list of selected non-buggy ids.
+
+    returns:
+        None.
+    """
+
+    buggy_ids, nonbuggy_ids = classify_inputs(inputs_dir, jit_on, jit_off)
+
+    for id in selected_b:
+        if id not in buggy_ids:
+            assert (
+                False
+            ), f"ERROR: selected_b != buggy_ids. {selected_b} != {buggy_ids}."
+
+    for id in selected_nb:
+        if id not in nonbuggy_ids:
+            assert (
+                False
+            ), f"ERROR: selected_nb != nonbuggy_ids. {selected_nb} != {nonbuggy_ids}."
 
 def main():
     arguments_json = argument_parser()
@@ -314,6 +333,9 @@ def main():
             selected_nonbuggy_ids
         )= get_inputs_to_analyze(
                 seed_path,seed_ast, controlled_ipt_dir, inputs_dir, buggy_ids, nonbuggy_ids, user_n)
+        # Check to make sure the selected inputs are correctly classified.
+        check_selected_inputs(inputs_dir, jit_on, jit_off, selected_buggy_ids, selected_nonbuggy_ids)
+        
 
         selected_buggy_ids.sort()
         selected_nonbuggy_ids.sort()

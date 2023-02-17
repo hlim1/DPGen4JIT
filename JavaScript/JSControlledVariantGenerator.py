@@ -22,10 +22,47 @@ import JavaScript.SharedEditors as Shared
 import JavaScript.JSVariantLearning as JSVariantLearning
 
 def GenerateInputs(
-        rootPath: str, user_n: int, inputsPath: str, astDirPath: str, 
-        targetNodeIds: list, fileBase: str, seed_ast: dict,
-        language_info: dict, jitOnCommand: list, jitOffCommand: list):
+        root_path: str, user_n: int, 
+        controlled_ipt_dir: str, controlled_ast_dir: str,
+        target_ast_node_ids: list, seed_file_base: str, 
+        seed_ast: dict, language_info: dict, jit_on: list, jit_off: list):
     """This function (attempts to) generate user specified N*2 number of inputs.
+
+    args:
+        root_path (str): root directory path.
+        user_n (int): user specified N.
+        controlled_ipt_dir (str): controlled generated input directory.
+        controlled_ast_dir (str): controlled mutated ast directory.
+        target_ast_node_ids (list) list of ast node ids.
+        seed_file_base (str): seed input's file name base.
+        seed_ast (dict): seed input's ast.
+        language_info (dict): target language information.
+        jit_on (list): command-line to execute VM with JIT compilation on.
+        jit_off (list): command-line to execute VM with JIT compilation off.
+
+    returns:
+        None.
+    """
+
+    # Generate user specified number (N) of non-buggy inputs.
+    last_ipt_id = GenerateNonBuggies(
+                    root_path, user_n, 
+                    controlled_ipt_dir, controlled_ast_dir,
+                    target_ast_node_ids, seed_file_base, 
+                    seed_ast, language_info, jit_on, jit_off)
+
+    # Generate user specified number (N) of buggy inputs.
+    GenerateBuggies(
+        root_path, user_n, 
+        controlled_ipt_dir, controlled_ast_dir,
+        target_ast_node_ids, seed_file_base, 
+        seed_ast, language_info, jit_on, jit_off, last_ipt_id)
+
+def GenerateNonBuggies(
+        rootPath: str, user_n: int, inputsPath: str, astDirPath: str, 
+        targetNodeIds: list, fileBase: str, seed_ast: dict, language_info: dict, 
+        jitOnCommand: list, jitOffCommand: list):
+    """This function (attempts to) generate user specified N number of non-buggy inputs.
 
     args:
         rootPath (str): root directory path.
@@ -43,26 +80,46 @@ def GenerateInputs(
         None.
     """
 
+    astVariants = []
+
+    id2edit = {}
+    generated = 0
+    targetNodeIds_idx = [0]
+    for i in range(1, 1001):
+        if generated == user_n:
+            break
+        else:
+            ast_copy = copy.deepcopy(seed_ast)
+            target_node_id = getTargetNodeId(targetNodeIds, targetNodeIds_idx)
+            # Since we are sharing the ast_editor function, which returns 
+            # a boolean value to indicate whether we need a new target id 
+            # or not used in the random AST editor (Phase-1) but not in this 
+            # controlled AST editor, we just add a place holder, dummy, to receive the value.
+            # This dummy is not being used in anywhere.
+            dummy = Shared.ast_editor(ast_copy, target_node_id, language_info, id2edit)
+            is_buggy = checkGenerated(ast_copy, rootPath, jitOnCommand, jitOffCommand)
+
+            if (
+                    ast_copy != seed_ast and 
+                    ast_copy not in astVariants
+                    and not is_buggy
+            ):
+                astVariants.append(ast_copy)
+                generated += 1
+
     astFilePaths = []
-
-    astVariants = controlledASTVariantGenerator(
-                        seed_ast, user_n, 
-                        language_info, targetNodeIds,
-                        rootPath, jitOnCommand, 
-                        jitOffCommand)
-
-    variantId = 1
-    for astVariant in astVariants:
-        variantFilePath = f"{astDirPath}/{fileBase}-variant__{variantId}.json"
+    ipt_id = 1
+    for ast in astVariants:
+        variantFilePath = f"{astDirPath}/{fileBase}-variant__{ipt_id}.json"
         astFilePaths.append(variantFilePath)
         with open(variantFilePath, 'w') as ast_f:
-            json.dump(astVariant, ast_f)
-        variantId += 1
+            json.dump(ast, ast_f)
+        ipt_id += 1
 
     # Generate JS code variants based on the generated AST variants.
     Shared.JSCodeGenerator(inputsPath, astFilePaths)
 
-    return variantId
+    return ipt_id
 
 def GenerateBuggies(
         rootPath: str, user_n: int, inputsPath: str, astDirPath: str, 
@@ -101,13 +158,13 @@ def GenerateBuggies(
                         jitOnCommand, jitOffCommand)
             is_buggy = checkGenerated(ast_copy, rootPath, jitOnCommand, jitOffCommand)
 
-        if (
-                ast_copy != seed_ast and 
-                ast_copy not in astVariants
-                and is_buggy
-        ):
-            astVariants.append(ast_copy)
-            generated += 1
+            if (
+                    ast_copy != seed_ast and 
+                    ast_copy not in astVariants
+                    and is_buggy
+            ):
+                astVariants.append(ast_copy)
+                generated += 1
 
     astFilePaths = []
     ipt_id = last_ipt_id
@@ -123,8 +180,7 @@ def GenerateBuggies(
 
 def ControlledVariantGenerator(
         rootPath: str, inputsPath: str, astDirPath: str, fileBase: str, originalAST: dict, 
-        number: int, langInfo: dict, targetNodeIds: list, jitOnCommand: list, jitOffCommand: list
-):
+        number: int, langInfo: dict, targetNodeIds: list, jitOnCommand: list, jitOffCommand: list):
     """This function calls ast_editor specified N times to edit the copy of original 
     input program's AST based on the result from the Learning phase. In other words, 
     this function targets only some number of specific AST nodes.
