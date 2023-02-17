@@ -1,6 +1,7 @@
 import os, sys
 import json
 import argparse
+import math
 
 import JavaScript.JSRandomVariantGenerator as JSRandomVariantGenerator
 import JavaScript.JSVariantLearning as JSVariantLearning
@@ -8,6 +9,7 @@ import JavaScript.JSControlledVariantGenerator as JSControlledVariantGenerator
 import JavaScript.SharedEditors as SharedEditors
 import JavaScript.JSAstGenerator as JSAstG
 import Shared.SequenceAlignment as SEQAlign
+import Shared.SelectInputs as SelectInputs
 
 JSEXT = ".js"
 
@@ -164,31 +166,22 @@ def classify_inputs(inputs_path: str, jit_on: list, jit_off: list):
 
     return buggy_ids, nonbuggy_ids
 
-def select_inputs(seed_ast: dict, controlled_ipt_dir: str):
+def get_inputs_to_analyze(
+        seed_path: str, seed_ast: str, controlled_ipt_dir: str, inputs_dir: str, 
+        buggy_ids: list, nonbuggy_ids: list, user_n: int):
 
-    id2node = {}
-    seed_id2nodeStr = {}
+    (
+        selected_buggy_ids,
+        selected_nonbuggy_ids
+    ) = SelectInputs.select_input_ids(seed_ast, controlled_ipt_dir, buggy_ids, nonbuggy_ids, user_n)
 
-    depth = SharedEditors.assignIds(seed_ast, 1, id2node)
-    for id, node in id2node.items():
-        seed_id2nodeStr[id] = str(node)
+    (
+        selected_buggy_ids,
+        selected_nonbuggy_ids
+    ) = SelectInputs.select_inputs(
+            seed_path, inputs_dir, controlled_ipt_dir, selected_buggy_ids, selected_nonbuggy_ids)
 
-    input_files = os.listdir(f"{controlled_ipt_dir}")
-    ast_files = os.listdir(f"{controlled_ipt_dir}/asts")
-
-    for ast_file in ast_files:
-        ast = load_json(f"{controlled_ipt_dir}/asts/{ast_file}")
-
-        id2nodeStr = {}
-        depth = SharedEditors.assignIds(ast, 1, id2node)
-        for id, node in id2node.items():
-            id2nodeStr[id] = str(node)
-
-        alignment = SEQAlign.SequenceAlignment(
-                                list(seed_id2nodeStr.values()),
-                                list(id2nodeStr.values()))
-
-    return
+    return selected_buggy_ids, selected_nonbuggy_ids
 
 def main():
     arguments_json = argument_parser()
@@ -241,10 +234,18 @@ def main():
                 jit_on, jit_off)
         # Classify inputs.
         buggy_ids, nonbuggy_ids = classify_inputs(controlled_ipt_dir, jit_on, jit_off)
-        print (f"List of buggy input ids: {buggy_ids}")
-        print (f"List of non-buggy input ids: {nonbuggy_ids}")
+        # Select buggy and non-buggy input ids to be used in the analysis.
+        (
+            selected_buggy_ids,
+            selected_nonbuggy_ids
+        )= get_inputs_to_analyze(
+                seed_path,seed_ast, controlled_ipt_dir, inputs_dir, buggy_ids, nonbuggy_ids, user_n)
 
-        select_inputs(seed_ast, controlled_ipt_dir)
+        selected_buggy_ids.sort()
+        selected_nonbuggy_ids.sort()
+
+        print (f"Selected buggy ids: {selected_buggy_ids}")
+        print (f"Selected non-buggy ids: {selected_nonbuggy_ids}")
 
     return
 
