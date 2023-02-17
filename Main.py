@@ -276,7 +276,7 @@ def check_selected_inputs(inputs_dir: str, jit_on: list, jit_off: list, selected
                 False
             ), f"ERROR: selected_nb != nonbuggy_ids. {selected_nb} != {nonbuggy_ids}."
 
-def main():
+def fuzzing():
     arguments_json = argument_parser()
     arguments = load_json(arguments_json)
 
@@ -303,15 +303,21 @@ def main():
         seed_ast = None
         ipt_id2edit_node_id = None
         # Random input generation.
+        print ("PHASE 1: Generating inputs randomly.")
         (
             seed_ast,
             ipt_id2edit_node_id
         ) = get_random_inputs(
                 random_ipt_dir, random_ast_dir, seed_file_base, seed_code, user_n, language_info)
+        # Classify inputs.
+        rand_buggy_ids, rand_nonbuggy_ids = classify_inputs(random_ipt_dir, jit_on, jit_off)
+        print (f"    |__ Generated random buggy inputs: {rand_buggy_ids}")
+        print (f"    |__ Generated random non-buggy inputs: {rand_nonbuggy_ids}")
         # If seed_ast does not exist, simply generate one from the seed code.
         if not seed_ast:
             seed_ast = (JSAstG.AstGenerator(seed_code)).toDict()
         # Learn about the randomly generated inputs.
+        print ("PHASE 2: Analyzing randomly generated inputs.")
         (
             target_ast_node_ids,
             buggy_ipt_ids,
@@ -319,6 +325,7 @@ def main():
             jit_off
         ) = learn_inputs(random_ipt_dir, arguments, ipt_id2edit_node_id, seed_ast, random_ast_dir)
         # Select inputs generated in a controlled way.
+        print ("PHASE 3: Generating inputs based on the learning.")
         get_controlled_inputs(
                 root_path, user_n, 
                 controlled_ipt_dir, controlled_ast_dir,
@@ -327,7 +334,10 @@ def main():
                 jit_on, jit_off)
         # Classify inputs.
         buggy_ids, nonbuggy_ids = classify_inputs(controlled_ipt_dir, jit_on, jit_off)
+        print (f"    |__ Generated controlled buggy inputs: {buggy_ids}")
+        print (f"    |__ Generated controlled non-buggy inputs: {nonbuggy_ids}")
         # Select buggy and non-buggy input ids to be used in the analysis.
+        print ("PHASE 4: Select inputs to use in the fault localization.")
         (
             selected_buggy_ids,
             selected_nonbuggy_ids
@@ -335,15 +345,12 @@ def main():
                 seed_path,seed_ast, controlled_ipt_dir, inputs_dir, buggy_ids, nonbuggy_ids, user_n)
         # Check to make sure the selected inputs are correctly classified.
         check_selected_inputs(inputs_dir, jit_on, jit_off, selected_buggy_ids, selected_nonbuggy_ids)
-        
 
         selected_buggy_ids.sort()
         selected_nonbuggy_ids.sort()
 
-        print (f"Selected buggy ids: {selected_buggy_ids}")
-        print (f"Selected non-buggy ids: {selected_nonbuggy_ids}")
-
-    return
+        print (f"   |__ Selected buggy ids: {selected_buggy_ids}")
+        print (f"   |__ Selected non-buggy ids: {selected_nonbuggy_ids}")
 
 if __name__ == "__main__":
-    main()
+    fuzzing()
