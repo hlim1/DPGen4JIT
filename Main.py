@@ -80,6 +80,20 @@ def create_dirs(root: str):
 def get_random_inputs(
         random_ipt_dir: str, random_ast_dir: str, seed_file_base: str, seed_code: str, 
         user_n: int, language_info: dict):
+    """This function calls random input generator (fuzzer) to generate initial inputs.
+
+    args:
+        random_ipt_dir (str): directory to hold randomly generated inputs.
+        random_ast_dir (str): directory to hold randomly generated asts.
+        seed_file_base (str): seed input's file name base.
+        seed_code (str): seed input code in string.
+        user_n (int): user specified N.
+        language_info (dict): target language information.
+
+    returns:
+        (dict) seed input's ast.
+        (dict) new input ids to edited ast node id.
+    """
 
     (
         seed_ast,
@@ -97,6 +111,21 @@ def get_random_inputs(
 def learn_inputs(
         random_ipt_dir: str, arguments: dict, ipt_id2edit_node_id: dict, seed_ast: dict, 
         random_ast_dir: str):
+    """This function analyze the mutated asts to identify target ast nodes for the next
+    phase either to edit or avoid.
+
+    args:
+        random_ipt_dir (str): directory to hold randomly generated inputs.
+        arguments (dict): user argument.
+        ipt_id2edit_node_id (dict): new input ids to edited ast node id.
+        seed_ast (dict): seed input's ast.
+        random_ast_dir (str): directory to hold randomly generated asts.
+
+    returns:
+        (list) list of ast node ids.
+        (list) list of buggy input ids.
+        (list) list of non-buggy input ids.
+    """
 
     (
         target_ast_node_ids,
@@ -113,6 +142,24 @@ def get_controlled_inputs(
         controlled_ipt_dir: str, controlled_ast_dir: str,
         target_ast_node_ids: list, seed_file_base: str, 
         seed_ast: dict, language_info: dict, jit_on: list, jit_off: list):
+    """This function calls controlled input generator (fuzzer) to generate inputs,
+    which some (or all) will be used in the fault localization.
+
+    args:
+        root_path (str): root directory path.
+        user_n (int): user specified N.
+        controlled_ipt_dir (str): controlled generated input directory.
+        controlled_ast_dir (str): controlled mutated ast directory.
+        target_ast_node_ids (list) list of ast node ids.
+        seed_file_base (str): seed input's file name base.
+        seed_ast (dict): seed input's ast.
+        language_info (dict): target language information.
+        jit_on (list): command-line to execute VM with JIT compilation on.
+        jit_off (list): command-line to execute VM with JIT compilation off.
+
+    returns:
+        None.
+    """
 
     last_ipt_id = JSControlledVariantGenerator.GenerateInputs(
                         root_path, user_n, 
@@ -130,6 +177,17 @@ def get_controlled_inputs(
                         seed_ast, language_info, jit_on, jit_off, last_ipt_id)
 
 def classify_inputs(inputs_path: str, jit_on: list, jit_off: list):
+    """This function classifies inputs into buggies and non-buggies.
+
+    args:
+        inputs_path (str): directory path where inputs are stored.
+        jit_on (list): command-line to execute VM with JIT compilation on.
+        jit_off (list): command-line to execute VM with JIT compilation off.
+
+    returns:
+        (list) list of buggy input ids.
+        (list) list of non-buggy input ids.
+    """
 
     buggy_ids = []
     nonbuggy_ids = []
@@ -169,6 +227,22 @@ def classify_inputs(inputs_path: str, jit_on: list, jit_off: list):
 def get_inputs_to_analyze(
         seed_path: str, seed_ast: str, controlled_ipt_dir: str, inputs_dir: str, 
         buggy_ids: list, nonbuggy_ids: list, user_n: int):
+    """This function selects inputs to be used in the fault localization generated 
+    by the controlled fuzzer.
+
+    args:
+        seed_path (str): path to seed input.
+        seed_ast (dict): seed input's ast.
+        controlled_ipt_dir (str): controlled generated input directory.
+        inputs_dir (str): directory path where to store selected inputs.
+        buggy_ids (list): list of buggy ids.
+        nonbuggy_ids (list): list of non-buggy ids.
+        user_n (int): user specified N.
+
+    returns:
+        (list) list of selected buggy ids.
+        (list) list of selected non-buggy ids.
+    """
 
     (
         selected_buggy_ids,
