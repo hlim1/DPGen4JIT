@@ -29,6 +29,16 @@ def load_json(json_file: str):
         assert False, f"{json_file} cannot be opened."
 
 def compute_similarity(alignment: dict, seed_size: int):
+    """This function computes the jaccard similarity value of two sets,
+    i.e., seed ast nodes and comparing ast nodes.
+
+    args:
+        alignment (dict): seed ast node to comparing ast node alignment result.
+        seed_size (int): number of seed ast nodes.
+
+    returns:
+        (float) computed jaccard similarity value.
+    """
     
     sim_value = 0
 
@@ -46,10 +56,32 @@ def compute_similarity(alignment: dict, seed_size: int):
     return sim_value
 
 def sort_by_value(target: dict):
+    """This function sorts dictionary using the values in ascending order.
+
+    args:
+        target (dict): dictionary to sort.
+
+    returns:
+        (dict): sorted dictionary.
+    """
 
     return {k: v for k, v in sorted(target.items(), key=lambda item: item[1])}
 
-def select_input_ids(seed_ast: dict, controlled_ipt_dir: str, buggy_ids: list, nonbuggy_ids: list, user_n: int):
+def select_input_ids(
+        seed_ast: dict, controlled_ipt_dir: str, buggy_ids: list, nonbuggy_ids: list, user_n: int):
+    """This function selects ids of inputs to be used in the analysis.
+
+    args:
+        seed_ast (dict): seed input's ast.
+        controlled_ipt_dir (str): controlled generated input directory.
+        buggy_ids (list): list of buggy ids.
+        nonbuggy_ids (list): list of non-buggy ids.
+        user_n (int): user specified N.
+
+    returns:
+        (list) list of selected buggy ids.
+        (list) list of selected non-buggy ids.
+    """
 
     id2node = {}
     seed_id2nodeStr = {}
@@ -116,9 +148,23 @@ def select_input_ids(seed_ast: dict, controlled_ipt_dir: str, buggy_ids: list, n
 
     return selected_buggy_ids, selected_nonbuggy_ids
 
-def select_inputs(
+def move_inputs(
         seed_path: str, input_dir: str, controlled_ipt_dir: str, 
         selected_buggy_ids: list, selected_nonbuggy_ids: list):
+    """This function move selected inputs from the controlled input directory
+    to the actual inputs directory where the fault localizer retrieves inputs.
+
+    args:
+        seed_path (str): path to seed input.
+        inputs_dir (str): directory path where to store selected inputs.
+        controlled_ipt_dir (str): controlled generated input directory.
+        selected_buggy_ids (list): list of selected buggy ids.
+        selected_nonbuggy_ids (list): list of selected non-buggy ids.
+
+    returns:
+        (list) list of selected buggy ids.
+        (list) list of selected non-buggy ids.
+    """
 
     merged = selected_buggy_ids + selected_nonbuggy_ids
 
