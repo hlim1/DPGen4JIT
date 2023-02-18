@@ -87,7 +87,7 @@ def GenerateNonBuggies(
     id2edit = {}
     generated = 0
     targetNodeIds_idx = [0]
-    for i in range(1, 1001):
+    for i in range(1, 201):
         if generated == user_n:
             break
         else:
@@ -149,7 +149,7 @@ def GenerateBuggies(
     astVariants = []
 
     generated = 0
-    for i in range(1, 1001):
+    for i in range(1, 201):
         if generated == user_n:
             break
         else:
