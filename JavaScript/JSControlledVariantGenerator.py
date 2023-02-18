@@ -52,11 +52,13 @@ def GenerateInputs(
                     seed_ast, language_info, jit_on, jit_off)
 
     # Generate user specified number (N) of buggy inputs.
-    GenerateBuggies(
-        root_path, user_n, 
-        controlled_ipt_dir, controlled_ast_dir,
-        target_ast_node_ids, seed_file_base, 
-        seed_ast, language_info, jit_on, jit_off, last_ipt_id)
+    last_ipt_id = GenerateBuggies(
+                    root_path, user_n, 
+                    controlled_ipt_dir, controlled_ast_dir,
+                    target_ast_node_ids, seed_file_base, 
+                    seed_ast, language_info, jit_on, jit_off, last_ipt_id)
+
+    return last_ipt_id
 
 def GenerateNonBuggies(
         rootPath: str, user_n: int, inputsPath: str, astDirPath: str, 
@@ -177,6 +179,8 @@ def GenerateBuggies(
 
     # Generate JS code variants based on the generated AST variants.
     Shared.JSCodeGenerator(inputsPath, astFilePaths)
+
+    return ipt_id
 
 def ControlledVariantGenerator(
         rootPath: str, inputsPath: str, astDirPath: str, fileBase: str, originalAST: dict, 
