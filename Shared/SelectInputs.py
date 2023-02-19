@@ -138,7 +138,7 @@ def select_input_ids(
     # Compute the number of buggies and non-buggies to select
     # depends on the user specified N.
     if user_n % 2 == 0:
-        n_of_buggies = int((user_n/2)-1)
+        n_of_buggies = int(user_n/2)
         n_of_nonbuggies = int(user_n/2)
     else:
         n_of_buggies = int(math.floor(user_n/2))
