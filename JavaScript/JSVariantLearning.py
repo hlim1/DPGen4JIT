@@ -100,8 +100,8 @@ def get_EditedNodeIds(seed_ast: dict, randASTsPath: str):
     return variantId2editNodeId
 
 def RunJITExe(commands: list):
-    """This function runs the variant with the passed command under subprocess
-    and returns the output result.
+    """This function runs the variant with the passed command 
+    under subprocess and returns the output result.
 
     args:
         commands (list): command for executing JIT system.

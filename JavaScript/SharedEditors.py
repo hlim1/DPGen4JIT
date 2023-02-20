@@ -12,6 +12,12 @@ import subprocess
 from random import seed
 from random import randint
 
+currentdir = os.path.dirname(os.path.realpath(__file__))
+parentdir = os.path.dirname(currentdir)
+sys.path.append(parentdir)
+
+import Shared.SequenceAlignment as SEQAlign
+
 # Get current path.
 currentdir = os.path.dirname(os.path.realpath(__file__))
 # Executable command for nodeJS.
@@ -20,8 +26,9 @@ NODEJS = "node"
 JSCODEGENERATOR = f"{currentdir}/JSCodeGenerator.js"
 # List of operations currently the tool handles.
 OPERATIONS = [
-              'Literal', 'BinaryExpression', 'UnaryExpression', 'ArrayExpression',
-              'ObjectExpression', 'Identifier', 'AssignmentExpression', 'LogicalExpression',
+              'Literal', 'BinaryExpression', 'UnaryExpression', 
+              'ArrayExpression', 'ObjectExpression', 'Identifier', 
+              'AssignmentExpression', 'LogicalExpression',
               'ThisExpression'
 ]
 FORLOOP = "ForStatement"
@@ -29,7 +36,8 @@ FORLOOP = "ForStatement"
 SEED_INT = 99999
 
 def JSCodeGenerator(rootPath: str, astFilePaths: list):
-    """This function generates JavaScript codes based on the AST variants.
+    """This function generates JavaScript codes based on 
+    the AST variants.
 
     args:
         rootPath (str): root directory where all variants will be stored.
@@ -44,7 +52,8 @@ def JSCodeGenerator(rootPath: str, astFilePaths: list):
         name, ext = os.path.splitext(f)
         JSCodeFilePath = f"{rootPath}/{name}.js"
 
-        subprocess.run([NODEJS, JSCODEGENERATOR, astFilePath, JSCodeFilePath])
+        subprocess.run(
+                [NODEJS, JSCODEGENERATOR, astFilePath, JSCodeFilePath])
 
 def SingleJSCodeGenerator(astpath: str, jspath: str):
     """This function generates Javascript code from the ast.
@@ -59,14 +68,16 @@ def SingleJSCodeGenerator(astpath: str, jspath: str):
 
     subprocess.run([NODEJS, JSCODEGENERATOR, astpath, jspath])
 
-def ast_editor(ast: dict, target_node_id: int, langInfo: dict, id2edit: dict):
+def ast_editor(
+        ast: dict, target_node_id: int, langInfo: dict, id2edit: dict):
     """This function traverses the original program's ast and edits
     a single  of it.
 
     args:
       ast (dict): original PoC's syntax tree.
       target_node_id (int): target node id to edit.
-      langInfo (dict): information about the JS language, such as types and methods, etc.
+      langInfo (dict): information about the JS language, 
+      such as types and methods, etc.
       id2edit (dict): node id to edited node.
 
     returns:
@@ -147,15 +158,25 @@ def compareTrees(t1: dict, t2: dict):
 
     t1_id2node = {}
     t2_id2node = {}
+    t1_id2nodeStr = {}
+    t2_id2nodeStr = {}
 
     count = assignIds(t1, 1, t1_id2node)
+    for id, node in t1_id2node.items():
+        t1_id2nodeStr[id] = str(node)
     count = assignIds(t2, 1, t2_id2node)
+    for id, node in t2_id2node.items():
+        t2_id2nodeStr[id] = str(node)
+
+    alignment = SEQAlign.SequenceAlignment(
+                            list(t1_id2nodeStr.values()),
+                            list(t2_id2nodeStr.values()))
 
     ids = []
 
-    for id, node in t1_id2node.items():
-        if node !=  t2_id2node[id]:
-            ids.append(id)
+    for t1_id, t2_id in alignment.items():
+        if t1_id > 0 and t1_id <= 0:
+            ids.append(t1_id)
 
     return ids
 
@@ -172,11 +193,14 @@ def treeModifier(
       ast (dict): ast tree.
       depth (int): node id tracker.
       target_node_id (int): randomly selected node id.
-      accept (list): single element list indicating holding boolean value
-      that is False for tree fails to modified or True for tree was modified.
-      need_new_target (list): single element list indicating holding boolean value
-      that is False for not needing the new target or True for needing a new target.
-      langInfo (dict): information about the JS language, such as types and methods, etc.
+      accept (list): single element list indicating holding boolean 
+      value that is False for tree fails to modified or True for tree 
+      was modified.
+      need_new_target (list): single element list indicating holding 
+      boolean value that is False for not needing the new target or True 
+      for needing a new target.
+      langInfo (dict): information about the JS language, such as types 
+      and methods, etc.
 
     returns:
       (dict) modified ast.

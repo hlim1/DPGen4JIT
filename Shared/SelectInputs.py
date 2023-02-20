@@ -70,7 +70,8 @@ def sort_by_value(target: dict):
     return {k: v for k, v in sorted(target.items(), key=lambda item: item[1])}
 
 def select_input_ids(
-        seed_ast: dict, controlled_ipt_dir: str, buggy_ids: list, nonbuggy_ids: list, user_n: int):
+        seed_ast: dict, controlled_ipt_dir: str, buggy_ids: list, 
+        nonbuggy_ids: list, user_n: int):
     """This function selects ids of inputs to be used in the analysis.
 
     args:

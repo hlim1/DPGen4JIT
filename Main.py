@@ -367,8 +367,8 @@ def fuzzing():
         selected_buggy_ids.sort()
         selected_nonbuggy_ids.sort()
 
-        print (f"   |__ Selected buggy ids: {selected_buggy_ids}")
-        print (f"   |__ Selected non-buggy ids: {selected_nonbuggy_ids}")
+        print (f"   |__ Selected buggy ids: {selected_buggy_ids} ({len(selected_buggy_ids)})")
+        print (f"   |__ Selected non-buggy ids: {selected_nonbuggy_ids} ({len(selected_nonbuggy_ids)})")
 
 if __name__ == "__main__":
     fuzzing()
