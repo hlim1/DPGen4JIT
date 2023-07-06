@@ -1,5 +1,9 @@
+# OLD BACKUP CODE. NO LONGER USED IN PRACTICE.
+
+-----
+
 ## Input Program Variant Generator
 
-The scripts under this directory modifies the original input program provided by the user and generates variant input programs.
+The scripts under this directory modify the original input program provided by the user and generate variant input programs.
 
-Currently, this directory holds a subdirectory holding the scripts to generate variants for JavaScript language.
+This directory holds a subdirectory with scripts to generate variants for JavaScript language.
