@@ -20,8 +20,11 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-import JavaScript.JSAstGenerator as JSAstG
-import JavaScript.SharedEditors as Shared
+import GenVariants.JavaScript.JSAstGenerator as JSAstG
+import GenVariants.JavaScript.SharedEditors as Shared
+
+#import JSAstGenerator as JSAstG
+#import SharedEditors as Shared
 
 def RandomVariantGenerator(
         variantsPath: str, astDirPath: str, fileBase: str, originalJS: str, number: int,
@@ -96,7 +99,7 @@ def randomASTVariantGenerator(originalAST: dict, number: int, langInfo: dict):
   
     # Call ast_editor function to modify the original input program's AST.
     for i in range(1, 10000):
-        if generated == number*2:
+        if generated == number+1:
             break
         else:
             ast_copy = copy.deepcopy(originalAST)

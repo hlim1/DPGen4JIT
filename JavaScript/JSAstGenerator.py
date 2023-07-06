@@ -7,6 +7,7 @@
     Autho: Anonymous.
 """
 
+import json
 import esprima
 import argparse
 
@@ -49,5 +50,6 @@ if __name__ == "__main__":
         jsCode = jsFile.read()
 
         ast = AstGenerator(jsCode)
-
-        print (ast.toDict())
+        
+        with open("./ast.json", "w") as f:
+            json.dump(ast.toDict(), f, indent=4)

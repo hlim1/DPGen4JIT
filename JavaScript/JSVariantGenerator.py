@@ -18,9 +18,13 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-import JSRandomVariantGenerator as JSRandomVariantGenerator
-import JSVariantLearning as JSVariantLearning
-import JSControlledVariantGenerator as JSControlledVariantGenerator
+import GenVariants.JavaScript.JSRandomVariantGenerator as JSRandomVariantGenerator
+import GenVariants.JavaScript.JSVariantLearning as JSVariantLearning
+import GenVariants.JavaScript.JSControlledVariantGenerator as JSControlledVariantGenerator
+
+#import JSRandomVariantGenerator as JSRandomVariantGenerator
+#import JSVariantLearning as JSVariantLearning
+#import JSControlledVariantGenerator as JSControlledVariantGenerator
 
 JSLanguagePath = f"{currentdir}/JSLanguage.json"
 
