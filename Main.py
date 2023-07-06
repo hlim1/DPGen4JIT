@@ -287,7 +287,7 @@ def check_selected_inputs(inputs_dir: str, jit_on: list, jit_off: list, selected
                 False
             ), f"ERROR: selected_nb != nonbuggy_ids. {selected_nb} != {nonbuggy_ids}."
 
-def fuzzing():
+def main():
     arguments_json = argument_parser()
     arguments = load_json(arguments_json)
 
@@ -371,4 +371,4 @@ def fuzzing():
         print (f"   |__ Selected non-buggy ids: {selected_nonbuggy_ids} ({len(selected_nonbuggy_ids)})")
 
 if __name__ == "__main__":
-    fuzzing()
+    main()
