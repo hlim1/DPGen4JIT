@@ -22,12 +22,13 @@
         "std-objects2": ["Int16Array", "Int32Array", "Uint16Array", "Uint32Array", "Uint8Array"],
         "std-objects3": ["isFinite", "isNaN"],
         "std-objects4": ["BigInt64Array", "BigUint64Array"],
-        "fundamental-objects": ["Object", "Function", "Boolean", "Symbol"]
+        "fundamental-objects": ["Object", "Function", "Boolean", "Symbol"],
+        "array": ["pop", "push", "reverse", "shift"]
     },
     "operators": {
         "update": ["++", "--"],
-        "unary1": ["+", "-"],
-        "unary2": ["!", "~"],
+        "unary1": ["+", "-", "~"],
+        "unary2": ["!"],
         "binary": ["+", "-", "*", "/", "%", "**"],
         "comparison": [">", "<", ">=", "<=", "==", "!=", "==="],
         "logical": ["&&", "||"],
