@@ -175,7 +175,7 @@ def compareTrees(t1: dict, t2: dict):
     ids = []
 
     for t1_id, t2_id in alignment.items():
-        if t1_id > 0 and t1_id <= 0:
+        if t1_id > 0 and t2_id <= 0:
             ids.append(t1_id)
 
     return ids

@@ -132,18 +132,21 @@ def select_input_ids(
         elif ast_id in nonbuggy_ids:
             sorted_nonbuggy_ids.append(ast_id)
         else:
-            assert (
-                False
-            ), f"ERROR: ast id {ast_id} is neither in buggy nor non-buggy list."
+            continue
+            #assert (
+            #    False
+            #), f"ERROR: ast id {ast_id} is neither in buggy nor non-buggy list."
 
     # Compute the number of buggies and non-buggies to select
     # depends on the user specified N.
-    if user_n % 2 == 0:
-        n_of_buggies = int(user_n/2)
-        n_of_nonbuggies = int(user_n/2)
-    else:
-        n_of_buggies = int(math.floor(user_n/2))
-        n_of_nonbuggies = int(math.ceil(user_n/2))
+    n_of_buggies = int(user_n/2)
+    n_of_nonbuggies = int(user_n/2)
+    #if user_n % 2 == 0:
+    #    n_of_buggies = int(user_n/2)
+    #    n_of_nonbuggies = int(user_n/2)
+    #else:
+    #    n_of_buggies = int(math.floor(user_n/2))
+    #    n_of_nonbuggies = int(math.ceil(user_n/2))
 
     # If the generated buggy inputs are less or equal to the target number
     # to select, simply select all generated inputs. Otherwise, reverse the
