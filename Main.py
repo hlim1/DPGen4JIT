@@ -3,13 +3,19 @@ import json
 import argparse
 import math
 
-import JavaScript.JSRandomVariantGenerator as JSRandomVariantGenerator
-import JavaScript.JSVariantLearning as JSVariantLearning
-import JavaScript.JSControlledVariantGenerator as JSControlledVariantGenerator
-import JavaScript.SharedEditors as SharedEditors
-import JavaScript.JSAstGenerator as JSAstG
-import Shared.SequenceAlignment as SEQAlign
-import Shared.SelectInputs as SelectInputs
+# Code to import modules from other directories.
+# Soruce: https://codeolives.com/2020/01/10/python-reference-module-in-parent-directory/
+currentdir = os.path.dirname(os.path.realpath(__file__))
+parentdir = os.path.dirname(currentdir)
+sys.path.append(parentdir)
+
+import DFuzz4JITC.JavaScript.JSRandomVariantGenerator as JSRandomVariantGenerator
+import DFuzz4JITC.JavaScript.JSVariantLearning as JSVariantLearning
+import DFuzz4JITC.JavaScript.JSControlledVariantGenerator as JSControlledVariantGenerator
+import DFuzz4JITC.JavaScript.SharedEditors as SharedEditors
+import DFuzz4JITC.JavaScript.JSAstGenerator as JSAstG
+import DFuzz4JITC.Shared.SequenceAlignment as SEQAlign
+import DFuzz4JITC.Shared.SelectInputs as SelectInputs
 
 JSEXT = ".js"
 
@@ -287,10 +293,7 @@ def check_selected_inputs(inputs_dir: str, jit_on: list, jit_off: list, selected
                 False
             ), f"ERROR: selected_nb != nonbuggy_ids. {selected_nb} != {nonbuggy_ids}."
 
-def main():
-    arguments_json = argument_parser()
-    arguments = load_json(arguments_json)
-
+def generator(arguments: dict):
     if "root" in arguments:
         root_path = arguments["root"]
     else:
@@ -332,12 +335,16 @@ def main():
         seed_ast = None
         ipt_id2edit_node_id = None
         # Random input generation.
-        print ("PHASE 1: Generating inputs randomly.")
-        (
-            seed_ast,
-            ipt_id2edit_node_id
-        ) = get_random_inputs(
-                random_ipt_dir, random_ast_dir, seed_file_base, seed_code, user_n, language_info)
+        rands = os.listdir(random_ast_dir)
+        if not rands:
+            print ("PHASE 1: Generating inputs randomly.")
+            (
+                seed_ast,
+                ipt_id2edit_node_id
+            ) = get_random_inputs(
+                    random_ipt_dir, random_ast_dir, seed_file_base, seed_code, user_n, language_info)
+        else:
+            print ("PHASE 1: Loading inputs randomly.")
         # Classify inputs.
         rand_buggy_ids, rand_nonbuggy_ids = classify_inputs(random_ipt_dir, jit_on, jit_off)
         print (f"   |__ Generated random buggy inputs: {rand_buggy_ids}")
@@ -383,4 +390,7 @@ def main():
         print (f"   |__ Selected non-buggy ids: {selected_nonbuggy_ids} ({len(selected_nonbuggy_ids)})")
 
 if __name__ == "__main__":
-    main()
+    arguments_json = argument_parser()
+    arguments = load_json(arguments_json)
+
+    generator(arguments)

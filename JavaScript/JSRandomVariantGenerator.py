@@ -95,7 +95,7 @@ def randomASTVariantGenerator(originalAST: dict, number: int, langInfo: dict):
     id2edit = {}
   
     # Call ast_editor function to modify the original input program's AST.
-    for i in range(1, 10000):
+    for i in range(1, total_nodes*2):
         if generated == number*2:
             break
         else:

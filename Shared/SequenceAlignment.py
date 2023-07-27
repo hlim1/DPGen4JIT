@@ -110,7 +110,8 @@ def ComputeAlignment(Matrix: list, seq_1: list, seq_2: list):
     # The pair (seq_1Idx, seq_2Idx).
     while row > 0 and col > 0:
         if (
-                row > 0 and col > 0 and 
+                (row > 0 and col > 0) and 
+                (len(Matrix) > row and len(Matrix[row]) > col) and
                 Matrix[row][col] == Matrix[row-1][col-1] + compare_element(seq_1[seq_1Idx], seq_2[seq_2Idx])
         ):
             alignedSeqIdxes[seq_1Idx] = seq_2Idx
@@ -119,7 +120,8 @@ def ComputeAlignment(Matrix: list, seq_1: list, seq_2: list):
             seq_1Idx -= 1
             seq_2Idx -= 1
         elif (
-                row > 0 and col > 0 and
+                (row > 0 and col > 0) and
+                (len(Matrix) > row and len(Matrix[row]) > col) and
                 Matrix[row][col] == Matrix[row][col-1] + SCORES["INDEL"]
         ):
             alignedSeqIdxes[seq_1Idx] = missing
