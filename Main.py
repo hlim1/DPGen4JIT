@@ -291,10 +291,22 @@ def main():
     arguments_json = argument_parser()
     arguments = load_json(arguments_json)
 
-    root_path = arguments["root"]
-    seed_path = arguments["seed"]
+    if "root" in arguments:
+        root_path = arguments["root"]
+    else:
+        root_path = arguments["dirPath"]
+
+    if "seed" in arguments:
+        seed_path = arguments["seed"]
+    else:
+        seed_path = arguments["inputPath"]
+
+    if "n" in arguments:
+        user_n    = arguments["n"]
+    else:
+        user_n    = arguments["nOfVariant"]
+
     lang_info = arguments["language_info"]
-    user_n    = arguments["n"]
 
     random_ipt_dir = f"{root_path}/random"
     random_ast_dir = f"{root_path}/random/asts"
