@@ -9,13 +9,15 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-import DFuzz4JITC.JavaScript.JSRandomVariantGenerator as JSRandomVariantGenerator
-import DFuzz4JITC.JavaScript.JSVariantLearning as JSVariantLearning
-import DFuzz4JITC.JavaScript.JSControlledVariantGenerator as JSControlledVariantGenerator
-import DFuzz4JITC.JavaScript.SharedEditors as SharedEditors
-import DFuzz4JITC.JavaScript.JSAstGenerator as JSAstG
-import DFuzz4JITC.Shared.SequenceAlignment as SEQAlign
-import DFuzz4JITC.Shared.SelectInputs as SelectInputs
+import DPGen4JIT.JavaScript.JSRandomVariantGenerator as JSRandomVariantGenerator
+import DPGen4JIT.JavaScript.JSVariantLearning as JSVariantLearning
+import DPGen4JIT.JavaScript.JSControlledVariantGenerator as JSControlledVariantGenerator
+import DPGen4JIT.JavaScript.SharedEditors as SharedEditors
+import DPGen4JIT.JavaScript.JSAstGenerator as JSAstG
+import DPGen4JIT.Shared.SequenceAlignment as SEQAlign
+import DPGen4JIT.Shared.SelectInputs as SelectInputs
+import DPGen4JIT.C.SourceToSource as C_S2S
+import DPGen4JIT.C.CRandomGenerator as CRandomGen
 
 JSEXT = ".js"
 
@@ -293,7 +295,7 @@ def check_selected_inputs(inputs_dir: str, jit_on: list, jit_off: list, selected
                 False
             ), f"ERROR: selected_nb != nonbuggy_ids. {selected_nb} != {nonbuggy_ids}."
 
-def generator(arguments: dict):
+def JSGenerator(arguments: dict):
     if "root" in arguments:
         root_path = arguments["root"]
     else:
@@ -389,8 +391,45 @@ def generator(arguments: dict):
         print (f"   |__ Selected buggy ids: {selected_buggy_ids} ({len(selected_buggy_ids)})")
         print (f"   |__ Selected non-buggy ids: {selected_nonbuggy_ids} ({len(selected_nonbuggy_ids)})")
 
+def CGenerator(arguments):
+    """
+    """
+
+    if "root" in arguments:
+        root_path = arguments["root"]
+    else:
+        root_path = arguments["dirPath"]
+
+    if "seed" in arguments:
+        seed_path = arguments["seed"]
+    else:
+        seed_path = arguments["inputPath"]
+
+    if "n" in arguments:
+        user_n    = arguments["n"]
+    else:
+        user_n    = arguments["nOfVariant"]
+
+    lang_info = load_json(arguments["language_info"])
+
+    random_ipt_dir = f"{root_path}/random"
+    random_ast_dir = f"{root_path}/random/asts"
+    controlled_ipt_dir = f"{root_path}/controlled"
+    controlled_ast_dir = f"{root_path}/controlled/asts"
+    inputs_dir = f"{root_path}/inputs"
+
+    # Convert C source code to python3 'dict' object.
+    ast_dict = C_S2S.file_to_dict(seed_path)
+    # Generate C code randomly.
+    asts = CRandomGen.CRandomGenerator(ast_dict, lang_info, user_n)
+
+    for ast in asts:
+        code = C_S2S.ast_to_c(ast)
+        print (code)
+
 if __name__ == "__main__":
     arguments_json = argument_parser()
     arguments = load_json(arguments_json)
 
-    generator(arguments)
+    # JSGenerator(arguments)
+    CGenerator(arguments)

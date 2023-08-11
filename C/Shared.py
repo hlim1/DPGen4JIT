@@ -101,7 +101,7 @@ def ast_editor(
                         depth += 1
                 elif isinstance(value, dict):
                     if depth == target_node_id:
-                        edit_dict(ast, key)
+                        edit_dict(ast, key, lang_info)
                     depth = ast_editor(value, target_node_id, 
                             lang_info, id2edit, depth, skip_ids) + 1
                 else:
@@ -111,7 +111,7 @@ def ast_editor(
 
     return depth
 
-def edit_dict(node: dict, key: str):
+def edit_dict(node: dict, key: str, lang_info: dict):
     """
     """
 
@@ -129,11 +129,12 @@ def edit_dict(node: dict, key: str):
         if len(names) > 1:
             pass
         else:
-            names[0] = 'double'
+            pass
     elif _nodetype == 'UnaryOp':
-        pass
+        node = modify_unary(node, key, lang_info)
     else:
         print (f"WARNING: _nodetype {_nodetype} is not being handle yet...")
+        print (f"|__{node[key]}")
 
 def edit_block(node: dict):
     """
@@ -162,11 +163,13 @@ def modify_number(node: dict, key: str):
     else:
         valType = node[key]['type']
 
-    print (f"node: {node}, valType: {valType}")
-    
     value = 0
     if valType == 'char' or valType == 'unsigned char':
-        value = random.randint(0, 255)
+        if random.randint(0, 9) % 2 == 0:
+            value = random.randint(65, 90)
+        else:
+            value = random.randint(97, 122)
+        value = f"'{chr(value)}'"
     elif valType == 'signed char':
         value = random.randint(0, 127)
     elif valType == 'int':
@@ -190,8 +193,39 @@ def modify_number(node: dict, key: str):
     else:
         print(f"WARNING: Value type {valType} not handled...")
 
-    print (f"New Value {value} from {node[key]['value']}")
-
     node[key]['value'] = str(value)
+
+    return node
+
+def modify_unary(node: dict, key: str, lang_info: dict):
+    """This function modified the unary operator.
+
+    args:
+        node (dict): node dictionary.
+        key (str): key of the node.
+        lang_info (dict): language information.
+
+    returns:
+        (dict) modified node.
+    """
+
+    operators = lang_info['operators']
+
+    node_op = node[key]['op']
+
+    if node_op == "!":
+        print ("WARNING: Unary op is '!'...")
+        return node
+    
+    op = ""
+    for k, values in operators.items():
+        if node_op in values:
+            op = random.choice(values)
+            break
+    
+    if not op:
+        print ("WARNING: Unary op is empty...")
+    else:
+        node[key]['op'] = op
 
     return node
