@@ -1,83 +1,57 @@
-import json
 import copy
 import os, sys
+import random
+
+# Code to import modules from other directories.
+# Soruce: https://codeolives.com/2020/01/10/python-reference-module-in-parent-directory/
+currentdir = os.path.dirname(os.path.realpath(__file__))
+parentdir = os.path.dirname(currentdir)
+sys.path.append(parentdir)
+
+import C.Shared as Shared
 
 def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
-    """
+    """This function randomly mutates the seed program and generates
+    user specified amont of new test programs.
+
+    args:
+        ast_dict (dict): seed program's ast.
+        lang_info (dict): C language specification information.
+        user_n (int): user specified n.
+
+    returns:
+        (list) list of new test program asts.
     """
 
-    total_nodes = treeScanner(ast_dict, 1)
+    skip_ids = set()
+    total_nodes = Shared.treeScanner(ast_dict, 1, skip_ids)
+    # DEBUG
+    print (f"Skip IDS: {skip_ids}")
 
     # Tracks the number of generated variants number.
     generated = 1
     # Sets the target_node_id to 1.
     target_node_id = 1
-
+    # AST node id to edited info.
     id2edit = {}
-
-    asts = []
+    # List of generated new ASTs.
+    asts = [ast_dict]
 
     # Call ast_editor function to modify the original 
     # input program's AST.
-    for i in range(1, total_nodes*2):
-        if generated == user_n*2:
-            break
+    for i in range(1, total_nodes):
+        if i in skip_ids:
+            continue
         else:
-            ast_copy = copy.deepcopy(ast_dict)
-            depth = ast_editor(
-                        ast_copy, 38, lang_info, id2edit, 1)
-            asts.append(ast_copy)
-            # DEBUG
-            break
+            for j in range(0, 5):
+                ast_copy = copy.deepcopy(ast_dict)
+                depth = Shared.ast_editor(
+                            ast_copy, i, lang_info, id2edit, 
+                            1, skip_ids)
+                if ast_copy not in asts:
+                    asts.append(ast_copy)
+    
+    print (f"Number of generated new ASTs: {len(asts)-1}...")
 
     return asts
 
-def treeScanner(ast: dict, depth: int):
-
-    if ast:
-        if type(ast) == dict:
-            for key, value in ast.items():
-                #print (f"{key} = {value}")
-                if isinstance(value, list):
-                    for elem in value:
-                        depth = treeScanner(elem, depth) + 1
-                elif isinstance(value, dict):
-                    depth = treeScanner(value, depth) + 1
-                else:
-                    depth += 1
-
-    return depth
-
-def ast_editor(
-        ast: dict, target_node_id: int, lang_info: dict,
-        id2edit: dict, depth: int):
-    """
-    """
-
-    if ast:
-        if type(ast) == dict:
-            for key, value in ast.items():
-                if isinstance(value, list):
-                    if value:
-                        for elem in value:
-                            depth = ast_editor(elem, target_node_id, 
-                                    lang_info, id2edit, depth) + 1
-                    else:
-                        depth += 1
-                elif isinstance(value, dict):
-                    depth = ast_editor(value, target_node_id, 
-                            lang_info, id2edit, depth) + 1
-                else:
-                    edit_dict(ast, key)
-                    depth += 1
-        else:
-            depth += 1
-
-    return depth
-
-def edit_dict(node: dict, key: str):
-    """
-    """
-
-    if key == 'value' and node[key] == str(123):
-        node['value'] = str(321)
