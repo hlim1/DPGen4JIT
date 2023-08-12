@@ -53,8 +53,10 @@
         "assignment": ["+=", "-=", "*=", "^=", "/=", "%=", "&=", "|=", "&&=", "**=", "??=", "||=", ">>=", ">>>="]
     },
     "data-types": {
-        "types1": ["int", "float", "double", "short", "long", "char"],
-        "types2": ["signed", "unsigned"]
+        "types1": ["int", "float", "double"],
+        "types2": ["long", "short"],
+        "types3": ["signed", "unsigned"],
+        "types4": ["char"]
     },
     "qualifiers": ["volatile", "const", "restrict"],
     "object-types": {

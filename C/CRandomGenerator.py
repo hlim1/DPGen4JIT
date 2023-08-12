@@ -24,16 +24,18 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
     """
 
     skip_ids = set()
-    total_nodes = Shared.treeScanner(ast_dict, 1, skip_ids)
+    function_names = set()
+    (
+        total_nodes 
+    ) = Shared.treeScanner(ast_dict, 1, skip_ids, function_names)
     # DEBUG
     print (f"Skip IDS: {skip_ids}")
+    print (f"Functions: {function_names}")
 
     # Tracks the number of generated variants number.
     generated = 1
     # Sets the target_node_id to 1.
     target_node_id = 1
-    # AST node id to edited info.
-    id2edit = {}
     # List of generated new ASTs.
     asts = [ast_dict]
 
@@ -45,9 +47,9 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
         else:
             for j in range(0, 5):
                 ast_copy = copy.deepcopy(ast_dict)
-                depth = Shared.ast_editor(
-                            ast_copy, i, lang_info, id2edit, 
-                            1, skip_ids)
+                depth = Shared.astEditor(
+                            ast_copy, i, lang_info, 1, 
+                            skip_ids, function_names)
                 if ast_copy not in asts:
                     asts.append(ast_copy)
     
