@@ -67,14 +67,14 @@ def GetUnhandledNodeTypes(ast: dict, depth: int, unhandled: set):
                 if isinstance(value, list):
                     if value:
                         for elem in value:
-                            if '_nodetype' in elem:
+                            if '_nodetype' in elem and elem['_nodetype'] not in HANDLED_NODETYPES:
                                 unhandled.add(elem['_nodetype'])
                             depth = GetUnhandledNodeTypes(elem, depth, unhandled) + 1
                     else:
                         depth += 1
                 elif isinstance(value, dict):
-                    if '_nodetype' in value and value['_nodetype'] not in HANDLED_NODETYPES:
-                        unhandled.add(value['_nodetype'])
+                    if '_nodetype' in ast and ast['_nodetype'] not in HANDLED_NODETYPES:
+                        unhandled.add(ast['_nodetype'])
                     depth = GetUnhandledNodeTypes(value, depth, unhandled) + 1
                 else:
                     depth += 1
@@ -112,8 +112,8 @@ def GetAllNodeTypes(ast: dict, depth: int, nodeTypes: set):
                     else:
                         depth += 1
                 elif isinstance(value, dict):
-                    if '_nodetype' in value:
-                        nodeTypes.add('_nodetype')
+                    if '_nodetype' in ast:
+                        nodeTypes.add(ast['_nodetype'])
                     depth = GetAllNodeTypes(value, depth, nodeTypes) + 1
                 else:
                     depth += 1
