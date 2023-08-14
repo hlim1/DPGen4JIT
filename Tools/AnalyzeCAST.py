@@ -3,6 +3,7 @@ import os, sys
 import random
 import argparse
 import json
+import math
 
 # Code to import modules from other directories.
 # Soruce: https://codeolives.com/2020/01/10/python-reference-module-in-parent-directory/
@@ -11,14 +12,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
 import C.SourceToSource as C_S2S
-
-HANDLED_NODETYPES = [
-    'FuncDef', 'FileAST', 'FuncDecl', 'IdentifierType',
-    'Constant', 'UnaryOp', 'BinaryOp', 'TypeDecl',
-    'ext', 'body', 'Compound', 'Decl', 'init',
-    'Return', 'ID', 'TernaryOp', 'PtrDecl', 'For', 'FuncCall', 'ArrayDecl',
-    'ArrayRef', 'InitList', 'Assignment'
-]
+import C.Shared as Shared
 
 def argument_parser():
     """This function parses the passed argument.
@@ -48,7 +42,7 @@ def dumpToJson(filepath: str, target: dict):
     with open(filepath, "w") as f:
         f.write(converted)
 
-def GetUnhandledNodeTypes(ast: dict, depth: int, unhandled: set):
+def GetUnhandledNodeTypes(ast: dict, depth: int, unhandled: set, handledNodeTypes: list):
     """This function traverse AST tree for the two tasks:
         (1) count the number of nodes.
         (2) 
@@ -68,21 +62,25 @@ def GetUnhandledNodeTypes(ast: dict, depth: int, unhandled: set):
                 if isinstance(value, list):
                     if value:
                         for elem in value:
-                            if '_nodetype' in elem and elem['_nodetype'] not in HANDLED_NODETYPES:
+                            if '_nodetype' in elem and elem['_nodetype'] not in handledNodeTypes:
                                 unhandled.add(elem['_nodetype'])
-                            depth = GetUnhandledNodeTypes(elem, depth, unhandled) + 1
+                            depth = GetUnhandledNodeTypes(
+                                    elem, depth, unhandled,
+                                    handledNodeTypes) + 1
                     else:
                         depth += 1
                 elif isinstance(value, dict):
-                    if '_nodetype' in ast and ast['_nodetype'] not in HANDLED_NODETYPES:
+                    if '_nodetype' in ast and ast['_nodetype'] not in handledNodeTypes:
                         unhandled.add(ast['_nodetype'])
-                    depth = GetUnhandledNodeTypes(value, depth, unhandled) + 1
+                    depth = GetUnhandledNodeTypes(
+                            value, depth, unhandled,
+                            handledNodeTypes) + 1
                 else:
                     depth += 1
         else:
             depth += 1
 
-    if '_nodetype' in ast and ast['_nodetype'] not in HANDLED_NODETYPES:
+    if '_nodetype' in ast and ast['_nodetype'] not in handledNodeTypes:
         unhandled.add(ast['_nodetype'])
 
     return depth
@@ -126,12 +124,12 @@ def GetAllNodeTypes(ast: dict, depth: int, nodeTypes: set):
 
     return depth
 
-
 def main1(directory: str, info: dict):
 
     files = os.listdir(directory)
     
     nodeTypes = set()
+    nodetype2files = {}
     for f in files:
         if f.endswith('.c'):
             f_path = f"{directory}/{f}"
@@ -140,15 +138,21 @@ def main1(directory: str, info: dict):
                 # Convert C source code to python3 'dict' object.
                 ast_dict = C_S2S.file_to_dict(f_path)
                 depth = GetAllNodeTypes(ast_dict, 1, nodeTypes)
+
+                for nodetype in nodeTypes:
+                    if nodetype not in nodetype2files:
+                        nodetype2files[nodetype] = [f]
+                    else:
+                        nodetype2files[nodetype].append(f)
             except:
                 print (f"|__Failed")
                 info["fails"].append(f)
 
     info["nodetypes"] = list(copy.deepcopy(nodeTypes))
     
-    return info
+    return info, nodetype2files
 
-def main2(directory: str, info: dict):
+def main2(directory: str, info: dict, handledNodeTypes: list):
 
     files = os.listdir(directory)
     
@@ -160,7 +164,7 @@ def main2(directory: str, info: dict):
                 print (f"Current File: {f_path}")
                 # Convert C source code to python3 'dict' object.
                 ast_dict = C_S2S.file_to_dict(f_path)
-                depth = GetUnhandledNodeTypes(ast_dict, 1, unhandled)
+                depth = GetUnhandledNodeTypes(ast_dict, 1, unhandled, handledNodeTypes)
             else:
                 print (f"Skip: {f_path}")
 
@@ -171,10 +175,24 @@ def main2(directory: str, info: dict):
             
 if __name__ == "__main__":
     directory = argument_parser()
+    
+    nodetypes = Shared.load_json(f"{parentdir}/C/NodeTypes.json")
+    handledNodeTypes = nodetypes["handled"] + nodetypes["skips"]
 
-    info = {"fails":[], "nodetypes":[], "handled":[], "unhandled":[]}
+    info = {
+        "stat": {}, "nodetypes":[], 
+        "handled":[], "unhandled":[],
+        "nodetype2files":{}, "fails":[]
+    }
 
-    info = main1(directory, info)
-    info = main2(directory, info)
+    info, nodetype2files = main1(directory, info)
+    info = main2(directory, info, handledNodeTypes)
+
+    info["nodetype2files"] = copy.deepcopy(nodetype2files)
+    info["stat"]["total"] = f"{len(info['nodetypes'])}"
+    handled = round((len(info['handled'])/len(info['nodetypes']))*100)
+    info["stat"]["handled"] = f"{len(info['handled'])} ({handled}%)"
+    unhandled = round((len(info['unhandled'])/len(info['nodetypes']))*100)
+    info["stat"]["unhandled"] = f"{len(info['unhandled'])} ({unhandled}%)"
 
     dumpToJson(f"./info.json", info)
