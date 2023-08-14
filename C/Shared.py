@@ -3,22 +3,6 @@ import random
 import copy
 import json
 
-C_DATATYPES = [
-        'char', 
-        'unsigned char', 
-        'signed char',
-        'int', 
-        'unsigned int',
-        'shart',
-        'unsigned short',
-        'long',
-        'unsigned long',
-        'float',
-        'double',
-        'long double'
-
-]
-
 def selectTarget(total_nodes: int, skip_ids: set):
     """This function selected target AST node ID to mutate.
 
