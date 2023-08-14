@@ -1,3 +1,6 @@
+"""
+"""
+
 import json
 import sys
 import re
@@ -131,10 +134,51 @@ def ast_to_c(ast):
     ast = from_dict(ast)
     return generator.visit(ast)
 
+def astEditor(ast: dict, target_node_id: int, depth: int):
+    """This function traverses the ast and seek for the target node 
+    by comparing the passed target node id. Then, if found, edits 
+    (mutates) the node.
+
+    args:
+        ast (dict): ast to scan.
+        target_node_id (int): target node id to edit.
+        depth (int): tree depth.
+
+    returns:
+        (int) tree depth.
+    """
+
+    if ast:
+        if type(ast) == dict:
+            for key, value in ast.items():
+                if isinstance(value, list):
+                    if value:
+                        for elem in value:
+                            depth = astEditor(elem, target_node_id, depth) + 1
+                    else:
+                        depth += 1
+                elif isinstance(value, dict):
+                    print (depth, ast)
+                    if depth == target_node_id:
+                        pass
+                        #return depth
+                    depth = astEditor(
+                            value, target_node_id, depth) + 1
+                else:
+                    depth += 1
+        else:
+            depth += 1
+
+    if '_nodetype' in ast and depth == target_node_id:
+        pass
+
+    return depth
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         # Converts pycparser 'ast' object to python 'dict' object.
         ast_dict = file_to_dict(sys.argv[1])
+        depth = astEditor(ast_dict, 0, 1,)
         # Converts python 'dict' object to pycparser 'ast' object.
         ast = from_dict(ast_dict)
         # Converts pycparser 'ast' object to c code and prints it.

@@ -58,7 +58,9 @@
         "types3": ["signed", "unsigned"],
         "types4": ["char"]
     },
-    "qualifiers": ["volatile", "const", "restrict"],
+    "qualifiers1": ["volatile", "const"],
+    "qualifiers2": ["restrict"],
+    "loop":["break", "continue"],
     "object-types": {
     }
 }

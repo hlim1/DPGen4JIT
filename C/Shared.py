@@ -22,7 +22,7 @@ def selectTarget(total_nodes: int, skip_ids: set):
 
 def treeScanner(
         ast: dict, depth: int, skip_ids: set, function_names: set,
-        nodetypes: dict):
+        nodetypes: dict, labels: set):
     """This function traverse AST tree for the two tasks:
         (1) count the number of nodes.
         (2) identify the nodes to skip for mutation.
@@ -32,6 +32,7 @@ def treeScanner(
         depth (int): tree depth.
         skip_ids (set): set to hold node ids to skip.
         function_names (set): set to hold function names.
+        labels (set): lable IDs from Label nodes.
 
     returns:
         (int) tree depth.
@@ -44,22 +45,26 @@ def treeScanner(
                     if value:
                         skip_ids = check_skips(
                                 ast, key, depth, skip_ids, 
-                                function_names, nodetypes)
+                                function_names, nodetypes,
+                                labels)
                         for elem in value:
                             if elem != dict:
                                 skip_ids.add(depth)
                             depth = treeScanner(
                                     elem, depth, skip_ids, 
-                                    function_names, nodetypes) + 1
+                                    function_names, nodetypes,
+                                    labels) + 1
                     else:
                         depth += 1
                 elif isinstance(value, dict):
                     skip_ids = check_skips(
                             ast, key, depth, skip_ids, 
-                            function_names, nodetypes)
+                            function_names, nodetypes,
+                            labels)
                     depth = treeScanner(
                             value, depth, skip_ids, 
-                            function_names, nodetypes) + 1
+                            function_names, nodetypes,
+                            labels) + 1
                 else:
                     depth += 1
         else:
@@ -67,14 +72,14 @@ def treeScanner(
     
     skip_ids = check_skips(
             ast, "", depth, skip_ids, function_names,
-            nodetypes)
+            nodetypes, labels)
 
     return depth
 
 def astEditor(
         ast: dict, target_node_id: int, lang_info: dict,
         depth: int, skip_ids: set, function_names: set,
-        nodetypes: dict):
+        nodetypes: dict, labels: set):
     """This function traverses the ast and seek for the target node 
     by comparing the passed target node id. Then, if found, edits 
     (mutates) the node.
@@ -86,6 +91,7 @@ def astEditor(
         depth (int): tree depth.
         skip_ids (set): set of node ids to skip.
         function_names (set): set of function names in the code.
+        labels (set): lable IDs from Label nodes.
 
     returns:
         (int) tree depth.
@@ -97,38 +103,38 @@ def astEditor(
                 if isinstance(value, list):
                     if value:
                         for elem in value:
-                            if depth == target_node_id:
-                                edit_block(elem)
-                                return depth
                             depth = astEditor(
                                     elem, target_node_id, 
                                     lang_info, depth, skip_ids, 
-                                    function_names, nodetypes) + 1
+                                    function_names, nodetypes,
+                                    labels) + 1
                     else:
                         depth += 1
                 elif isinstance(value, dict):
                     if depth == target_node_id:
-                        edit_nonblock(
+                        edit_node(
                                 ast, ast[key], lang_info, 
-                                function_names, nodetypes)
+                                function_names, nodetypes, 
+                                labels)
                         return depth
                     depth = astEditor(
                             value, target_node_id, 
                             lang_info, depth, skip_ids, 
-                            function_names, nodetypes) + 1
+                            function_names, nodetypes,
+                            labels) + 1
                 else:
                     depth += 1
         else:
             depth += 1
 
     if '_nodetype' in ast and depth == target_node_id:
-        edit_nonblock(ast, ast, lang_info, function_names, nodetypes)
+        edit_node(ast, ast, lang_info, function_names, nodetypes, labels)
 
     return depth
 
-def edit_nonblock(
+def edit_node(
         parent: dict, current: dict, lang_info: dict, function_names: set,
-        nodetypes: dict):
+        nodetypes: dict, labels: set):
     """This function edits the node if the node is a non-block node.
 
     args:
@@ -136,6 +142,7 @@ def edit_nonblock(
         current (dict): current node to edit.
         lang_info (dict): language info.
         function_names (set): set of function names.
+        labels (set): lable IDs from Label nodes.
 
     returns:
         None.
@@ -160,30 +167,20 @@ def edit_nonblock(
         current = modify_typeDecl(parent, current, lang_info, function_names)
     elif _nodetype == 'Assignment':
         current = modify_assignment(parent, current, lang_info)
+    elif _nodetype == 'Typename':
+        current = modify_typename(parent, current, lang_info)
+    elif _nodetype == 'Decl':
+        current = modify_decl(parent, current, lang_info, function_names)
+    elif _nodetype == 'Goto':
+        current = modify_goto(parent, current, lang_info, labels)
+    elif _nodetype == 'Continue' or _nodetype == 'Break':
+        current = modify_loop_cf(current)
     elif _nodetype in nodetypes['skips']:
         pass
     else:
         print (f"WARNING: _nodetype {_nodetype} is not handle yet...")
         print (f"|__current: {current}")
         print (f"   |__parent: {parent}")
-
-def edit_block(node: dict):
-    """This function edits the node if the node is a block node.
-
-    args:
-        node (dict): target node to edit.
-
-    returns:
-        None.
-    """
-
-    assert (
-        '_nodetype' in node
-    ), f"ERROR: '_nodetype' does not exist in the AST node: {node}"
-
-    _nodetype = node['_nodetype']
-
-    print(f"edit_block: {node}")
 
 def modify_number(parent: dict, current: dict):
     """This function modifies the constant value node if the value is
@@ -237,7 +234,7 @@ def modify_number(parent: dict, current: dict):
     return current
 
 def modify_unary(parent: dict, current: dict, lang_info: dict):
-    """This function modified the unary operator.
+    """This function modifies unary node.
 
     args:
         parent (dict): parent node of the current.
@@ -272,7 +269,7 @@ def modify_unary(parent: dict, current: dict, lang_info: dict):
     return current
 
 def modify_binary(parent: dict, current: dict, lang_info: dict):
-    """This function modified binary the  operator.
+    """This function modifies binary node.
 
     args:
         parent (dict): parent node of the current.
@@ -299,7 +296,7 @@ def modify_binary(parent: dict, current: dict, lang_info: dict):
     return current
 
 def modify_typeDecl(parent: dict, current: dict, lang_info: dict, function_names: set):
-    """This function modified binary the  operator.
+    """This function modifies typeDecl node.
 
     args:
         parent (dict): parent node of the current.
@@ -312,11 +309,13 @@ def modify_typeDecl(parent: dict, current: dict, lang_info: dict, function_names
     """
 
     declname = current['declname']
-    typename = ' '.join(current['type']['names'])
     
     if declname in function_names:
         return current
+    elif current['type']['_nodetype'] == 'Struct':
+        return current
     else:
+        typename = ' '.join(current['type']['names'])
         dataTypes = lang_info['data-types']
         nodeTypeNames = current['type']['names']
         # Default set the target name element to its first element.
@@ -353,7 +352,7 @@ def modify_typeDecl(parent: dict, current: dict, lang_info: dict, function_names
     return current
 
 def modify_assignment(parent: dict, current: dict, lang_info: dict):
-    """This function modified binary the  operator.
+    """This function modifies Assignment node.
 
     args:
         parent (dict): parent node of the current.
@@ -374,7 +373,8 @@ def modify_assignment(parent: dict, current: dict, lang_info: dict):
         return current
     else:
         operators = lang_info['operators']
-        for key, value in operators.itmes():
+
+        for key, value in operators.items():
             if op in value:
                 new_op = random.choice(value)
                 while new_op == op:
@@ -384,9 +384,140 @@ def modify_assignment(parent: dict, current: dict, lang_info: dict):
 
     return current
 
+def modify_typename(parent: dict, current: dict, lang_info: dict):
+    """This function modifies Typename node.
+
+    args:
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
+        lang_info (dict): language information.
+
+    returns:
+        (dict) modified node.
+    """
+
+    assert (
+        current['_nodetype'] == 'Typename'
+    ), f"ERROR: _nodetype in modify_typename is not 'Typename': {current}."
+
+    if not current['quals']:
+        return current
+    else:
+        qualifiers = lang_info['qualifiers1']
+
+        quals = current['quals']
+        
+        new_quals = []
+        for qual in quals:
+            new_qual = random.choice(qualifiers)
+            while new_qual == qual:
+                new_qual = random.choice(qualifiers)
+            new_quals.append(new_qual)
+
+        current['quals'] = copy.deepcopy(new_quals)
+        current['type']['type']['quals'] = copy.deepcopy(new_quals)
+
+    return current
+
+def modify_decl(parent: dict, current: dict, lang_info: dict, function_names: set):
+    """This function modifies the decl node.
+
+    args:
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
+        lang_info (dict): language information.
+        function_names (set): set of function names.
+
+    returns:
+        (dict) modified node.
+    """
+
+    assert (
+        current['_nodetype'] == 'Decl'
+    ), f"ERROR: _nodetype in modify_decl is not 'Decl': {current}."
+
+    name = current['name']
+
+    if name in function_names:
+        return current
+    elif not current['quals']:
+        return current
+    else:
+        assert (
+            len(current['quals']) > 0
+        ), f"ERROR: current['quals'] is empty."
+
+        qualifiers = lang_info['qualifiers1']
+
+        quals = current['quals']
+        
+        new_quals = []
+        for qual in quals:
+            new_qual = random.choice(qualifiers)
+            while new_qual == qual:
+                new_qual = random.choice(qualifiers)
+            new_quals.append(new_qual)
+
+        current['quals'] = copy.deepcopy(new_quals)
+        current['type']['quals'] = copy.deepcopy(new_quals)
+
+    return current
+
+def modify_goto(parent: dict, current: dict, lang_info: dict, labels: set):
+    """This function modifies Goto node.
+
+    args:
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
+        lang_info (dict): language information.
+        labels (set): lable IDs from Label nodes.
+
+    returns:
+        (dict) modified node.
+    """
+
+    assert (
+        current['_nodetype'] == 'Goto'
+    ), f"ERROR: _nodetype in modify_goto is not 'Goto': {current}."
+
+    if len(labels) == 1:
+        return current
+    else:
+        name = current['name']
+        new_name = random.choice(list(labels))
+        while new_name == name:
+            new_name = random.choice(list(labels))
+        current['name'] = new_name
+
+    return current
+
+def modify_loop_cf(current: dict):
+    """This function modifies either Continue or Break node.
+
+    args:
+        current (dict): current node to edit.
+
+    returns:
+        (dict) modified node.
+    """
+
+    _nodetype = current['_nodetype']
+
+    assert (
+        _nodetype == 'Continue' or
+        _nodetype == 'Break'
+    ), f"ERROR: _nodetype in modify_loop_cf is neither Continue nor Break: {current}."
+
+    if _nodetype == 'Break':
+        current['_nodetype'] = 'Continue'
+    else:
+        current['_nodetype'] = 'Break'
+
+    return current
+
 def check_skips(
         node: dict, key: str, depth: int, skip_ids: set, 
-        function_names: set, nodetypes: dict):
+        function_names: set, nodetypes: dict, labels: set):
     """This function checks if we want to skip the node during 
     the mutation. If yes, it adds the node ID in the skip_ids set.
 
@@ -402,6 +533,7 @@ def check_skips(
         depth (int): depth of the tree, i.e., a node id.
         skip_ids (set) set of node ids to skip.
         function_names (set): set to hold function names.
+        labels (set): lable IDs from Label nodes.
 
     return:
         (set) set of node ids.
@@ -421,6 +553,9 @@ def check_skips(
             # identifier's name. 'IdentifierType' only holds the
             # identifier's type.
             pass
+        elif node['_nodetype'] == 'Label':
+            # We want to keep a track of all label names (IDs).
+            labels.add(node['name'])
         else:
             skip_ids.add(depth)
 

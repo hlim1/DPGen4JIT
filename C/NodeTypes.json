@@ -4,7 +4,12 @@
         "Constant",
         "UnaryOp",
         "BinaryOp",
-        "TypeDecl"
+        "TypeDecl",
+        "Typename",
+        "Decl",
+        "Goto",
+        "Break",
+        "Continue"
     ],
     "skips": [
         "FuncDef",
@@ -13,7 +18,6 @@
         "IdentifierType",
         "Return",
         "Compound",
-        "Decl",
         "init",
         "ID",
         "TernaryOp",
@@ -24,6 +28,18 @@
         "ArrayRef", 
         "InitList",
         "ext",
-        "body"
+        "body",
+        "EllipsisParam",
+        "ParamList",
+        "ExprList",
+        "If",
+        "EmptyStatement",
+        "While",
+        "Label",
+        "Struct",
+        "StructRef",
+        "Pragma",
+        "Cast",
+        "Union"
     ]
 }
