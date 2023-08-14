@@ -128,6 +128,7 @@ def main1(directory: str, info: dict):
 
     files = os.listdir(directory)
     
+    allNodeTypes = set()
     nodetype2files = {}
     for f in files:
         if f.endswith('.c'):
@@ -138,17 +139,18 @@ def main1(directory: str, info: dict):
                 # Convert C source code to python3 'dict' object.
                 ast_dict = C_S2S.file_to_dict(f_path)
                 depth = GetAllNodeTypes(ast_dict, 1, nodeTypes)
-                
+
+                allNodeTypes = allNodeTypes.union(nodeTypes)
+
                 for nodetype in nodeTypes:
                     if nodetype not in nodetype2files:
                         nodetype2files[nodetype] = [f]
                     else:
                         nodetype2files[nodetype].append(f)
             except:
-                print (f"|__Failed")
                 info["fails"].append(f)
-
-    info["nodetypes"] = list(copy.deepcopy(nodeTypes))
+    
+    info["nodetypes"] = list(copy.deepcopy(allNodeTypes))
     
     return info, nodetype2files
 
@@ -165,8 +167,6 @@ def main2(directory: str, info: dict, handledNodeTypes: list):
                 # Convert C source code to python3 'dict' object.
                 ast_dict = C_S2S.file_to_dict(f_path)
                 depth = GetUnhandledNodeTypes(ast_dict, 1, unhandled, handledNodeTypes)
-            else:
-                print (f"Skip: {f_path}")
 
     info["unhandled"] = list(copy.deepcopy(unhandled))
     info["handled"] = list(copy.deepcopy(set(info["nodetypes"]) - unhandled))
