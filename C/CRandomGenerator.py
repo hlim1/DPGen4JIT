@@ -23,11 +23,13 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
         (list) list of new test program asts.
     """
 
+    nodetypes = Shared.load_json(f"{currentdir}/NodeTypes.json")
+
     skip_ids = set()
     function_names = set()
     (
         total_nodes 
-    ) = Shared.treeScanner(ast_dict, 1, skip_ids, function_names)
+    ) = Shared.treeScanner(ast_dict, 1, skip_ids, function_names, nodetypes)
     # DEBUG
     # print (f"Skip IDS: {skip_ids}")
     # print (f"Functions: {function_names}")
@@ -49,7 +51,8 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
                 ast_copy = copy.deepcopy(ast_dict)
                 depth = Shared.astEditor(
                             ast_copy, i, lang_info, 1, 
-                            skip_ids, function_names)
+                            skip_ids, function_names,
+                            nodetypes)
                 if ast_copy not in asts:
                     asts.append(ast_copy)
     

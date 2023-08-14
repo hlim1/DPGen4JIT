@@ -1,0 +1,29 @@
+{
+    "handled": [
+        "Assignment",
+        "Constant",
+        "UnaryOp",
+        "BinaryOp",
+        "TypeDecl"
+    ],
+    "skips": [
+        "FuncDef",
+        "FileAST",
+        "FuncDecl",
+        "IdentifierType",
+        "Return",
+        "Compound",
+        "Decl",
+        "init",
+        "ID",
+        "TernaryOp",
+        "PtrDecl",
+        "For",
+        "FuncCall",
+        "ArrayDecl",
+        "ArrayRef", 
+        "InitList",
+        "ext",
+        "body"
+    ]
+}

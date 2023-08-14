@@ -1,19 +1,7 @@
 import os, sys
 import random
 import copy
-
-# Following holds the list of node types that we want to skip
-# while editing the AST. This is because the nodes with these
-# node types are too coarse or changing it won't make any changes
-# to the source code. Thus, identify the node's IDs (AST depth)
-# during the initial tree scanning, and skip them while editing
-# can increase the efficiency of the tool.
-SKIP_NODETYPES = [
-        'FuncDef', 'FileAST', 'FuncDecl', 'IdentifierType',
-        'Return', 'Compound', 'Decl', 'init', 'ID',
-        'TernaryOp', 'PtrDecl', 'For', 'FuncCall', 'ArrayDecl',
-        'ArrayRef', 'InitList'
-]
+import json
 
 C_DATATYPES = [
         'char', 
@@ -49,7 +37,8 @@ def selectTarget(total_nodes: int, skip_ids: set):
     return target
 
 def treeScanner(
-        ast: dict, depth: int, skip_ids: set, function_names: set):
+        ast: dict, depth: int, skip_ids: set, function_names: set,
+        nodetypes: dict):
     """This function traverse AST tree for the two tasks:
         (1) count the number of nodes.
         (2) identify the nodes to skip for mutation.
@@ -71,32 +60,37 @@ def treeScanner(
                     if value:
                         skip_ids = check_skips(
                                 ast, key, depth, skip_ids, 
-                                function_names)
+                                function_names, nodetypes)
                         for elem in value:
                             if elem != dict:
                                 skip_ids.add(depth)
                             depth = treeScanner(
                                     elem, depth, skip_ids, 
-                                    function_names) + 1
+                                    function_names, nodetypes) + 1
                     else:
                         depth += 1
                 elif isinstance(value, dict):
                     skip_ids = check_skips(
-                            ast, key, depth, skip_ids, function_names)
+                            ast, key, depth, skip_ids, 
+                            function_names, nodetypes)
                     depth = treeScanner(
-                            value, depth, skip_ids, function_names) + 1
+                            value, depth, skip_ids, 
+                            function_names, nodetypes) + 1
                 else:
                     depth += 1
         else:
             depth += 1
     
-    skip_ids = check_skips(ast, "", depth, skip_ids, function_names)
+    skip_ids = check_skips(
+            ast, "", depth, skip_ids, function_names,
+            nodetypes)
 
     return depth
 
 def astEditor(
         ast: dict, target_node_id: int, lang_info: dict,
-        depth: int, skip_ids: set, function_names: set):
+        depth: int, skip_ids: set, function_names: set,
+        nodetypes: dict):
     """This function traverses the ast and seek for the target node 
     by comparing the passed target node id. Then, if found, edits 
     (mutates) the node.
@@ -125,31 +119,32 @@ def astEditor(
                             depth = astEditor(
                                     elem, target_node_id, 
                                     lang_info, depth, skip_ids, 
-                                    function_names) + 1
+                                    function_names, nodetypes) + 1
                     else:
                         depth += 1
                 elif isinstance(value, dict):
                     if depth == target_node_id:
                         edit_nonblock(
                                 ast, ast[key], lang_info, 
-                                function_names)
+                                function_names, nodetypes)
                         return depth
                     depth = astEditor(
                             value, target_node_id, 
                             lang_info, depth, skip_ids, 
-                            function_names) + 1
+                            function_names, nodetypes) + 1
                 else:
                     depth += 1
         else:
             depth += 1
 
     if '_nodetype' in ast and depth == target_node_id:
-        edit_nonblock(ast, ast, lang_info, function_names)
+        edit_nonblock(ast, ast, lang_info, function_names, nodetypes)
 
     return depth
 
 def edit_nonblock(
-        parent: dict, current: dict, lang_info: dict, function_names: set):
+        parent: dict, current: dict, lang_info: dict, function_names: set,
+        nodetypes: dict):
     """This function edits the node if the node is a non-block node.
 
     args:
@@ -168,7 +163,7 @@ def edit_nonblock(
 
     _nodetype = current['_nodetype']
 
-    if '_nodetype' in parent and parent['_nodetype'] in SKIP_NODETYPES:
+    if '_nodetype' in parent and parent['_nodetype'] in nodetypes['skips']:
         pass
     elif _nodetype == 'Constant':
         constantType = current['type']
@@ -181,7 +176,7 @@ def edit_nonblock(
         current = modify_typeDecl(parent, current, lang_info, function_names)
     elif _nodetype == 'Assignment':
         current = modify_assignment(parent, current, lang_info)
-    elif _nodetype in SKIP_NODETYPES:
+    elif _nodetype in nodetypes['skips']:
         pass
     else:
         print (f"WARNING: _nodetype {_nodetype} is not handle yet...")
@@ -407,9 +402,15 @@ def modify_assignment(parent: dict, current: dict, lang_info: dict):
 
 def check_skips(
         node: dict, key: str, depth: int, skip_ids: set, 
-        function_names: set):
+        function_names: set, nodetypes: dict):
     """This function checks if we want to skip the node during 
     the mutation. If yes, it adds the node ID in the skip_ids set.
+
+    This function is needed because the nodes with identified node types 
+    for skipping are too coarse or changing it won't make any changes to 
+    the source code. Thus, identify the node's IDs (AST depth) during the 
+    initial tree scanning, and skip them while editing can increase the 
+    efficiency of the tool.
 
     args:
         node (dict): node dictionary.
@@ -424,7 +425,7 @@ def check_skips(
 
     if key == 'ext' or key == 'body':
         skip_ids.add(depth)
-    elif '_nodetype' in node and node['_nodetype'] in SKIP_NODETYPES:
+    elif '_nodetype' in node and node['_nodetype'] in nodetypes['skips']:
         if node['_nodetype'] == 'FuncDecl':
             # We do not want to skip function declaration node, 
             # but we don't want to modify it yet. Thus, we only 
@@ -440,3 +441,20 @@ def check_skips(
             skip_ids.add(depth)
 
     return skip_ids
+
+def load_json(json_file: str):
+    """This function loads JSON and returns if the file is valid.
+    Otherwise, it throws an error and terminates the program.
+
+    args:
+        json_file (str): path to json file.
+
+    returns:
+        (dict) loaded IR.
+    """
+        
+    try:
+        with open(json_file) as f:
+            return json.load(f)
+    except IOError as x:
+        assert False, f"{json_file} cannot be opened."
