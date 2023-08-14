@@ -128,17 +128,17 @@ def main1(directory: str, info: dict):
 
     files = os.listdir(directory)
     
-    nodeTypes = set()
     nodetype2files = {}
     for f in files:
         if f.endswith('.c'):
+            nodeTypes = set()
             f_path = f"{directory}/{f}"
             print (f"Current File: {f_path}")
             try:
                 # Convert C source code to python3 'dict' object.
                 ast_dict = C_S2S.file_to_dict(f_path)
                 depth = GetAllNodeTypes(ast_dict, 1, nodeTypes)
-
+                
                 for nodetype in nodeTypes:
                     if nodetype not in nodetype2files:
                         nodetype2files[nodetype] = [f]
