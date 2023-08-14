@@ -29,8 +29,8 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
         total_nodes 
     ) = Shared.treeScanner(ast_dict, 1, skip_ids, function_names)
     # DEBUG
-    print (f"Skip IDS: {skip_ids}")
-    print (f"Functions: {function_names}")
+    # print (f"Skip IDS: {skip_ids}")
+    # print (f"Functions: {function_names}")
 
     # Tracks the number of generated variants number.
     generated = 1

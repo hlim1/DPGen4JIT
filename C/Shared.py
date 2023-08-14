@@ -2,7 +2,18 @@ import os, sys
 import random
 import copy
 
-SKIP_NODETYPES = ['FuncDef', 'FileAST', 'FuncDecl', 'IdentifierType']
+# Following holds the list of node types that we want to skip
+# while editing the AST. This is because the nodes with these
+# node types are too coarse or changing it won't make any changes
+# to the source code. Thus, identify the node's IDs (AST depth)
+# during the initial tree scanning, and skip them while editing
+# can increase the efficiency of the tool.
+SKIP_NODETYPES = [
+        'FuncDef', 'FileAST', 'FuncDecl', 'IdentifierType',
+        'Return', 'Compound', 'Decl', 'init', 'ID',
+        'TernaryOp', 'PtrDecl', 'For', 'FuncCall', 'ArrayDecl',
+        'ArrayRef', 'InitList'
+]
 
 C_DATATYPES = [
         'char', 
@@ -120,7 +131,7 @@ def astEditor(
                 elif isinstance(value, dict):
                     if depth == target_node_id:
                         edit_nonblock(
-                                ast, key, lang_info, 
+                                ast, ast[key], lang_info, 
                                 function_names)
                         return depth
                     depth = astEditor(
@@ -132,15 +143,18 @@ def astEditor(
         else:
             depth += 1
 
+    if '_nodetype' in ast and depth == target_node_id:
+        edit_nonblock(ast, ast, lang_info, function_names)
+
     return depth
 
 def edit_nonblock(
-        node: dict, key: str, lang_info: dict, function_names: set):
+        parent: dict, current: dict, lang_info: dict, function_names: set):
     """This function edits the node if the node is a non-block node.
 
     args:
-        node (dict): target node to edit.
-        key (str): key of node dictionary to edit.
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
         lang_info (dict): language info.
         function_names (set): set of function names.
 
@@ -149,26 +163,30 @@ def edit_nonblock(
     """
 
     assert (
-        '_nodetype' in node[key]
+        '_nodetype' in current
     ), f"ERROR: '_nodetype' does not exist in the AST node: {node[key]}"
 
-    _nodetype = node[key]['_nodetype']
+    _nodetype = current['_nodetype']
 
-    if _nodetype == 'Constant':
-        constantType = node[key]['type']
-        node = modify_number(node, key)
+    if '_nodetype' in parent and parent['_nodetype'] in SKIP_NODETYPES:
+        pass
+    elif _nodetype == 'Constant':
+        constantType = current['type']
+        current = modify_number(parent, current)
     elif _nodetype == 'UnaryOp':
-        node = modify_unary(node, key, lang_info)
+        current = modify_unary(parent, current, lang_info)
     elif _nodetype == 'BinaryOp':
-        node = modify_binary(node, key, lang_info)
+        current = modify_binary(parent, current, lang_info)
     elif _nodetype == 'TypeDecl':
-        node = modify_typeDecl(node, key, lang_info, function_names)
+        current = modify_typeDecl(parent, current, lang_info, function_names)
+    elif _nodetype == 'Assignment':
+        current = modify_assignment(parent, current, lang_info)
     elif _nodetype in SKIP_NODETYPES:
         pass
     else:
         print (f"WARNING: _nodetype {_nodetype} is not handle yet...")
-        print (f"|__node[key]: {node[key]}")
-        print (f"   |__node: {node}")
+        print (f"|__current: {current}")
+        print (f"   |__parent: {parent}")
 
 def edit_block(node: dict):
     """This function edits the node if the node is a block node.
@@ -186,22 +204,24 @@ def edit_block(node: dict):
 
     _nodetype = node['_nodetype']
 
-def modify_number(node: dict, key: str):
+    print(f"edit_block: {node}")
+
+def modify_number(parent: dict, current: dict):
     """This function modifies the constant value node if the value is
     a number type.
 
     args:
-        node (dict): node dictionary.
-        key (str): key of the node.
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
 
     returns:
         (dict) modified node.
     """
 
-    if '_nodetype' in node and node['_nodetype'] == 'Decl':
-        valType = ' '.join(node['type']['type']['names'])
+    if '_nodetype' in parent and parent['_nodetype'] == 'Decl':
+        valType = ' '.join(parent['type']['type']['names'])
     else:
-        valType = node[key]['type']
+        valType = current['type']
 
     value = 0
     if valType == 'char' or valType == 'unsigned char':
@@ -233,16 +253,16 @@ def modify_number(node: dict, key: str):
     else:
         print(f"WARNING: Value type {valType} not handled...")
 
-    node[key]['value'] = str(value)
+    current['value'] = str(value)
 
-    return node
+    return current
 
-def modify_unary(node: dict, key: str, lang_info: dict):
+def modify_unary(parent: dict, current: dict, lang_info: dict):
     """This function modified the unary operator.
 
     args:
-        node (dict): node dictionary.
-        key (str): key of the node.
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
         lang_info (dict): language information.
 
     returns:
@@ -251,11 +271,11 @@ def modify_unary(node: dict, key: str, lang_info: dict):
 
     operators = lang_info['operators']
 
-    node_op = node[key]['op']
+    node_op = current['op']
 
     if node_op == "!":
         print ("WARNING: Unary op is '!'...")
-        return node
+        return current
     
     op = ""
     for k, values in operators.items():
@@ -268,16 +288,16 @@ def modify_unary(node: dict, key: str, lang_info: dict):
     if not op:
         print ("WARNING: Unary op is empty...")
     else:
-        node[key]['op'] = op
+        current['op'] = op
 
-    return node
+    return current
 
-def modify_binary(node: dict, key: str, lang_info: dict):
+def modify_binary(parent: dict, current: dict, lang_info: dict):
     """This function modified binary the  operator.
 
     args:
-        node (dict): node dictionary.
-        key (str): key of the node.
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
         lang_info (dict): language information.
 
     returns:
@@ -286,22 +306,25 @@ def modify_binary(node: dict, key: str, lang_info: dict):
 
     operators = lang_info['operators']
 
-    node_op = node[key]['op']
+    node_op = current['op']
 
-    op = random.choice(operators['binary'])
-    while op == node_op:
-        op = random.choice(operators['binary'])
+    for key, value in operators.items():
+        if node_op in value:
+            op = random.choice(value)
+            while op == node_op:
+                op = random.choice(value)
+            break
     
-    node[key]['op'] = op
+    current['op'] = op
 
-    return node
+    return current
 
-def modify_typeDecl(node: dict, key: str, lang_info: dict, function_names: set):
+def modify_typeDecl(parent: dict, current: dict, lang_info: dict, function_names: set):
     """This function modified binary the  operator.
 
     args:
-        node (dict): node dictionary.
-        key (str): key of the node.
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
         lang_info (dict): language information.
         function_names (set): set of function names.
 
@@ -309,14 +332,14 @@ def modify_typeDecl(node: dict, key: str, lang_info: dict, function_names: set):
         (dict) modified node.
     """
 
-    declname = node[key]['declname']
-    typename = ' '.join(node[key]['type']['names'])
+    declname = current['declname']
+    typename = ' '.join(current['type']['names'])
     
     if declname in function_names:
-        return node
+        return current
     else:
         dataTypes = lang_info['data-types']
-        nodeTypeNames = node[key]['type']['names']
+        nodeTypeNames = current['type']['names']
         # Default set the target name element to its first element.
         targetNameIdx = 0
         # Default choice of the new type is selected randomly.
@@ -346,9 +369,41 @@ def modify_typeDecl(node: dict, key: str, lang_info: dict, function_names: set):
             new_type != None
         ), f"ERROR: New type is empty."
 
-        node[key]['type']['names'][targetNameIdx] = copy.deepcopy(new_type)
+        current['type']['names'][targetNameIdx] = copy.deepcopy(new_type)
 
-    return node
+    return current
+
+def modify_assignment(parent: dict, current: dict, lang_info: dict):
+    """This function modified binary the  operator.
+
+    args:
+        parent (dict): parent node of the current.
+        current (dict): current node to edit.
+        lang_info (dict): language information.
+
+    returns:
+        (dict) modified node.
+    """
+
+    assert (
+        current['_nodetype'] == 'Assignment'
+    ), f"ERROR: _nodetype in modify_assignment is not 'Assignment': {current}."
+
+    op = current['op']
+
+    if op == '=':
+        return current
+    else:
+        operators = lang_info['operators']
+        for key, value in operators.itmes():
+            if op in value:
+                new_op = random.choice(value)
+                while new_op == op:
+                    new_op = random.choice(value)
+                current['op'] = copy.deepcopy(new_op)
+                break
+
+    return current
 
 def check_skips(
         node: dict, key: str, depth: int, skip_ids: set, 
