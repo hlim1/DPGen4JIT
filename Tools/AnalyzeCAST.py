@@ -16,7 +16,8 @@ HANDLED_NODETYPES = [
     'FuncDef', 'FileAST', 'FuncDecl', 'IdentifierType',
     'Constant', 'UnaryOp', 'BinaryOp', 'TypeDecl',
     'ext', 'body', 'Compound', 'Decl', 'init',
-    'Return'
+    'Return', 'ID', 'TernaryOp', 'PtrDecl', 'For', 'FuncCall', 'ArrayDecl',
+    'ArrayRef', 'InitList', 'Assignment'
 ]
 
 def argument_parser():
