@@ -79,7 +79,7 @@ def treeScanner(
 def astEditor(
         ast: dict, target_node_id: int, lang_info: dict,
         depth: int, skip_ids: set, function_names: set,
-        nodetypes: dict, labels: set):
+        nodetypes: dict, labels: set, edited_nodeId: list):
     """This function traverses the ast and seek for the target node 
     by comparing the passed target node id. Then, if found, edits 
     (mutates) the node.
@@ -92,6 +92,8 @@ def astEditor(
         skip_ids (set): set of node ids to skip.
         function_names (set): set of function names in the code.
         labels (set): lable IDs from Label nodes.
+        edited_nodeId (list): a single element list that holds
+        the id of edited node.
 
     returns:
         (int) tree depth.
@@ -107,28 +109,33 @@ def astEditor(
                                     elem, target_node_id, 
                                     lang_info, depth, skip_ids, 
                                     function_names, nodetypes,
-                                    labels) + 1
+                                    labels, edited_nodeId) + 1
                     else:
                         depth += 1
                 elif isinstance(value, dict):
                     if depth == target_node_id:
-                        edit_node(
+                        is_edited = edit_node(
                                 ast, ast[key], lang_info, 
                                 function_names, nodetypes, 
                                 labels)
+                        if is_edited:
+                            edited_nodeId[0] = depth
                         return depth
                     depth = astEditor(
                             value, target_node_id, 
                             lang_info, depth, skip_ids, 
                             function_names, nodetypes,
-                            labels) + 1
+                            labels, edited_nodeId) + 1
                 else:
                     depth += 1
         else:
             depth += 1
 
     if '_nodetype' in ast and depth == target_node_id:
-        edit_node(ast, ast, lang_info, function_names, nodetypes, labels)
+        is_edited = edit_node(
+                ast, ast, lang_info, function_names, 
+                nodetypes, labels)
+        edited_nodeId[0] = depth
 
     return depth
 
@@ -148,6 +155,8 @@ def edit_node(
         None.
     """
 
+    is_edited = True
+
     assert (
         '_nodetype' in current
     ), f"ERROR: '_nodetype' does not exist in the AST node: {node[key]}"
@@ -155,7 +164,7 @@ def edit_node(
     _nodetype = current['_nodetype']
 
     if '_nodetype' in parent and parent['_nodetype'] in nodetypes['skips']:
-        pass
+        is_edited = False
     elif _nodetype == 'Constant':
         constantType = current['type']
         current = modify_number(parent, current)
@@ -176,11 +185,14 @@ def edit_node(
     elif _nodetype == 'Continue' or _nodetype == 'Break':
         current = modify_loop_cf(current)
     elif _nodetype in nodetypes['skips']:
-        pass
+        is_edited = False
     else:
+        is_edited = False
         print (f"WARNING: _nodetype {_nodetype} is not handle yet...")
         print (f"|__current: {current}")
         print (f"   |__parent: {parent}")
+
+    return is_edited
 
 def modify_number(parent: dict, current: dict):
     """This function modifies the constant value node if the value is

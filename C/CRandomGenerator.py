@@ -44,23 +44,34 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
     target_node_id = 1
     # List of generated new ASTs.
     asts = [ast_dict]
+    # File ID to edited node ID.
+    fileId2NodeId = {}
 
     # Call ast_editor function to modify the original 
     # input program's AST.
+    idx = 1
     for i in range(1, total_nodes):
         if i in skip_ids:
             continue
         else:
-            for j in range(0, 5):
+            edited_nodeId = [-1]
+            for j in range(0, 3):
                 ast_copy = copy.deepcopy(ast_dict)
                 depth = Shared.astEditor(
                             ast_copy, i, lang_info, 1, 
                             skip_ids, function_names,
-                            nodetypes, labels)
-                if ast_copy not in asts:
-                    asts.append(ast_copy)
+                            nodetypes, labels, edited_nodeId)
+                if (
+                    ast_copy not in asts and 
+                    edited_nodeId[0] != -1
+                ):
+                        asts.append(ast_copy)
+                        (
+                            fileId2NodeId[idx]
+                        ) = copy.deepcopy(edited_nodeId[0])
+                        idx += 1
     
     print (f"Number of generated new ASTs: {len(asts)-1}...")
 
-    return asts
+    return asts, fileId2NodeId
 
