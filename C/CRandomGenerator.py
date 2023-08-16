@@ -10,14 +10,13 @@ sys.path.append(parentdir)
 
 import C.Shared as Shared
 
-def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
+def CRandomGenerator(ast_dict: dict, lang_info: dict):
     """This function randomly mutates the seed program and generates
     user specified amont of new test programs.
 
     args:
         ast_dict (dict): seed program's ast.
         lang_info (dict): C language specification information.
-        user_n (int): user specified n.
 
     returns:
         (list) list of new test program asts.
@@ -33,10 +32,6 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict, user_n: int):
     ) = Shared.treeScanner(
             ast_dict, 1, skip_ids, function_names, 
             nodetypes, labels)
-    # DEBUG
-    # print (f"Labels: {labels}")
-    # print (f"Skip IDS: {skip_ids}")
-    # print (f"Functions: {function_names}")
 
     # Tracks the number of generated variants number.
     generated = 1

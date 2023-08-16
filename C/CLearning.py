@@ -10,57 +10,6 @@ sys.path.append(parentdir)
 
 import DPGen4JIT.Shared.General as General
 
-def Oracle(target: str, binPaths: set, compiler2BinPaths: dict):
-    """This function checks if the test program is a pass or fail.
-
-    args:
-        binPaths (set): set of paths for all binary executable files
-        generated using the target (buggy) compiler.
-        compiler2BinPaths (dict): compiler name to binary executable
-        paths.
-
-    returns:
-        (set) set of buggy file IDs.
-        (set) set of non-buggy file IDs.
-    """
-
-    voting = {}
-
-    # First run all binary executables generated from the target (buggy) compiler.
-    target_fileId2output, fileIdsToExc = RunBins(target, binPaths)
-    # Initialize the voting count for each output of each execution with 1.
-    for fileId, output in target_fileId2output.items():
-        voting[fileId] = {output:1}
-
-    for compiler, paths in compiler2BinPaths.items():
-        fileId2output, fileIdsToExc = RunBins(compiler, paths)
-        for fileId, output in fileId2output.items():
-            if fileId in voting and fileId not in fileIdsToExc:
-                if output in voting[fileId]:
-                    voting[fileId][output] += 1
-                else:
-                    voting[fileId][output] = 1
-            elif fileId in fileIdsToExc:
-                del voting[fileId]
-
-    buggyIds = set()
-    nonbuggyIds = set()
-    for fileId, output_info in voting.items():
-        if len(output_info) == 1:
-            nonbuggyIds.add(int(fileId))
-        elif len(output_info) == 2:
-            for output, count in output_info.items():
-                if (
-                    output == target_fileId2output[fileId] and
-                    count == 1
-                ):
-                    buggyIds.add(int(fileId))
-        else:
-            pass
-
-    # General.dumpToJson("./voting.json", voting)
-    return buggyIds, nonbuggyIds
-
 def GenerateBins(CFiles: set, binsPath: str, arguments: dict, commands: list, compiler: str):
     """This function generates binary executables from 
     the generated C files.
@@ -112,7 +61,7 @@ def GenerateBin(CFile: str, binsPath: str, commands: list, compiler: str):
     commands.append(binPath)
 
     output = subprocess.run(commands, capture_output=True, text=True)
-
+    
     return binPath
 
 def RunBins(compiler: str, binPaths: set):
@@ -130,9 +79,15 @@ def RunBins(compiler: str, binPaths: set):
     fileId2output = {}
     fileIdsToExc = set()
 
+    total = len(binPaths)
+    count = 1
+
     for binPath in binPaths:
         if os.path.exists(binPath):
-            print (f"RUNNING BIN: {compiler}: {binPath}...")
+            progress = round((count/total)*100)
+            print (f"RUNNING BIN: {compiler}: {binPath} ({progress}%)...")
+            count += 1
+
             fileId = (binPath.split('__')[-1]).split('.')[0]
             try:
                 output = subprocess.run([binPath], capture_output=True, text=True, timeout=10)
@@ -164,6 +119,107 @@ def IdentifyTargetNodeIDs(nonbuggyIds: set, fileId2NodeId: dict):
 
     return nodeIds
 
+def Oracle(target: str, binPaths: set, compiler2BinPaths: dict):
+    """This function checks if the test program is a pass or fail.
+
+    args:
+        binPaths (set): set of paths for all binary executable files
+        generated using the target (buggy) compiler.
+        compiler2BinPaths (dict): compiler name to binary executable
+        paths.
+
+    returns:
+        (set) set of buggy file IDs.
+        (set) set of non-buggy file IDs.
+    """
+
+    voting = {}
+
+    # First run all binary executables generated from the target (buggy) compiler.
+    target_fileId2output, fileIdsToExc = RunBins(target, binPaths)
+    # Initialize the voting count for each output of each execution with 1.
+    for fileId, output in target_fileId2output.items():
+        voting[fileId] = {output:1}
+
+    for compiler, paths in compiler2BinPaths.items():
+        fileId2output, fileIdsToExc = RunBins(compiler, paths)
+        for fileId, output in fileId2output.items():
+            if fileId in voting and fileId not in fileIdsToExc:
+                if output in voting[fileId]:
+                    voting[fileId][output] += 1
+                else:
+                    voting[fileId][output] = 1
+            elif fileId in fileIdsToExc:
+                del voting[fileId]
+
+    buggyIds = set()
+    nonbuggyIds = set()
+    for fileId, output_info in voting.items():
+        if len(output_info) == 1:
+            nonbuggyIds.add(int(fileId))
+        elif len(output_info) == 2:
+            for output, count in output_info.items():
+                if (
+                    output == target_fileId2output[fileId] and
+                    count == 1
+                ):
+                    buggyIds.add(int(fileId))
+        else:
+            pass
+
+    # General.dumpToJson("./voting.json", voting)
+    return buggyIds, nonbuggyIds
+
+def RunOracle(arguments: dict, binsPath: str, CFiles: set, _iptDir: str):
+    """
+
+    args:
+        arguments (dict): arguments to the system.
+        binsPath (str): path to directory where gengerated
+        binary files will be stored.
+        CFiles (set): set of C file paths.
+        _iptDir (str): path to the directory where generated
+        input C programs are stored.
+
+    returns:
+        (set) set of buggy file IDs.
+        (set) set of non-buggy file IDs.
+    """
+
+    # Number of compilers the user specified to use as Oracle.
+    numberOfComps = arguments["numberOfComps"]
+
+    # First generate the binaries using the target (buggy) compiler.
+    commands = [arguments["compilerPath"]]
+    commands.extend(arguments["arguments"])
+    print (f"BIN. GENERATION: {arguments['compilerPath']}...")
+    binPaths = GenerateBins(
+            CFiles, binsPath, arguments, commands, arguments["compiler"])
+
+    # For each user-specified compilers to be used in Oracle, generate binary 
+    # files for all the generated C test programs.
+    compiler2BinPaths = {}
+    for i in range(1, numberOfComps+1):
+        compilerKey = f"compiler{i}"
+        assert (
+            compilerKey in arguments
+        ), f"ERROR: Key ({compilerKey}) to get compiler command-line argument does not exist."
+        compCLA = copy.deepcopy(arguments[compilerKey])
+        # Generate a directory under _iptDir to hold binaries generated with
+        # the compiler used in Oracle. The name of the directory is the same as the
+        # compiler's executable bin (e.g., gcc, g++, icc, etc.)
+        compBinsPath = f"{_iptDir}/{compCLA[0]}"
+        if not os.path.exists(compBinsPath):
+            os.makedirs(compBinsPath)
+        print (f"BIN. GENERATION: {compCLA[0]}...")
+        bins4OraclePaths = GenerateBins(CFiles, compBinsPath, arguments, compCLA, compCLA[0])
+        compiler2BinPaths[compCLA[0]] = copy.deepcopy(bins4OraclePaths)
+    
+    # Classify C files into two groups: buggy and non-buggy.
+    buggyIds, nonbuggyIds = Oracle(arguments["compiler"], binPaths, compiler2BinPaths)
+
+    return buggyIds, nonbuggyIds
+
 def CLearning(
         arguments: dict, binsPath: str, CFiles: set, random_iptDir: str,
         fileId2NodeId: dict):
@@ -187,37 +243,7 @@ def CLearning(
         (set) set of target node IDs.
     """
 
-    # Number of compilers the user specified to use as Oracle.
-    numberOfComps = arguments["numberOfComps"]
-
-    # First generate the binaries using the target (buggy) compiler.
-    commands = [arguments["compilerPath"]]
-    commands.extend(arguments["arguments"])
-    print (f"BIN. GENERATION: {arguments['compilerPath']}...")
-    binPaths = GenerateBins(
-            CFiles, binsPath, arguments, commands, arguments["compiler"])
-
-    # For each user-specified compilers to be used in Oracle, generate binary 
-    # files for all the generated C test programs.
-    compiler2BinPaths = {}
-    for i in range(1, numberOfComps+1):
-        compilerKey = f"compiler{i}"
-        assert (
-            compilerKey in arguments
-        ), f"ERROR: Key ({compilerKey}) to get compiler command-line argument does not exist."
-        compCLA = arguments[compilerKey]
-        # Generate a directory under random_iptDir to hold binaries generated with
-        # the compiler used in Oracle. The name of the directory is the same as the
-        # compiler's executable bin (e.g., gcc, g++, icc, etc.)
-        compBinsPath = f"{random_iptDir}/{compCLA[0]}"
-        if not os.path.exists(compBinsPath):
-            os.makedirs(compBinsPath)
-        print (f"BIN. GENERATION: {compCLA[0]}...")
-        bins4OraclePaths = GenerateBins(CFiles, compBinsPath, arguments, compCLA, compCLA[0])
-        compiler2BinPaths[compCLA[0]] = copy.deepcopy(bins4OraclePaths)
-    
-    # Classify C files into two groups: buggy and non-buggy.
-    buggyIds, nonbuggyIds = Oracle(arguments["compiler"], binPaths, compiler2BinPaths)
+    buggyIds, nonbuggyIds = RunOracle(arguments, binsPath, CFiles, random_iptDir)
     print (f"UNDIRECTED: Buggy IDs: {buggyIds}")
     print (f"UNDIRECTED: NonBuggy IDs: {nonbuggyIds}")
 

@@ -135,7 +135,62 @@ def astEditor(
         is_edited = edit_node(
                 ast, ast, lang_info, function_names, 
                 nodetypes, labels)
-        edited_nodeId[0] = depth
+        if is_edited:
+            edited_nodeId[0] = depth
+
+    return depth
+
+def astEditorForDirectedBuggies(
+        ast: dict, lang_info: dict, depth: int, skip_ids: set,
+        function_names: set, nodetypes: dict, labels: set, nodeIds: set):
+    """This function traverses the ast and seek for the target node 
+    by comparing the passed target node id. Then, if found, edits 
+    (mutates) the node.
+
+    args:
+        ast (dict): ast to scan.
+        target_node_id (int): target node id to edit.
+        lang_info (dict): language information.
+        depth (int): tree depth.
+        skip_ids (set): set of node ids to skip.
+        function_names (set): set of function names in the code.
+        labels (set): lable IDs from Label nodes.
+
+    returns:
+        (int) tree depth.
+    """
+
+    if ast:
+        if type(ast) == dict:
+            for key, value in ast.items():
+                if isinstance(value, list):
+                    if value:
+                        for elem in value:
+                            depth = astEditorForDirectedBuggies(
+                                    elem, lang_info, depth, skip_ids, 
+                                    function_names, nodetypes, labels, 
+                                    nodeIds) + 1
+                    else:
+                        depth += 1
+                elif isinstance(value, dict):
+                    if depth in nodeIds:
+                        is_edited = edit_node(
+                                ast, ast[key], lang_info, 
+                                function_names, nodetypes, 
+                                labels)
+                    depth = astEditorForDirectedBuggies(
+                            value, lang_info, depth, skip_ids, 
+                            function_names, nodetypes, labels, 
+                            nodeIds) + 1
+                else:
+                    depth += 1
+        else:
+            depth += 1
+
+    if '_nodetype' in ast and depth in nodeIds:
+        is_edited = edit_node(
+                ast, ast, lang_info, function_names, 
+                nodetypes, labels)
 
     return depth
 
