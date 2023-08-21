@@ -27,13 +27,26 @@ def GenerateBins(CFiles: set, binsPath: str, arguments: dict, commands: list, co
     """
 
     binPaths = set()
+
+    stderrs = ""
     
     originalCMD = copy.deepcopy(commands)
     for c_file in CFiles:
-        binPath = GenerateBin(c_file, binsPath, commands, compiler)
+        binPath, output = GenerateBin(c_file, binsPath, commands, compiler)
         commands = copy.deepcopy(originalCMD)
 
-        binPaths.add(binPath)
+        if output.stderr:
+            stderrs += f"{output.stderr}\n"
+        else:
+            binPaths.add(binPath)
+
+    if "root" in arguments:
+        root = arguments["root"]
+    else:
+        root = arguments["dirPath"]
+
+    with open(f"{root}/misc/compileErrs.txt", "w") as f:
+        f.write(stderrs)
 
     return binPaths
 
@@ -61,8 +74,8 @@ def GenerateBin(CFile: str, binsPath: str, commands: list, compiler: str):
     commands.append(binPath)
 
     output = subprocess.run(commands, capture_output=True, text=True)
-    
-    return binPath
+
+    return binPath, output
 
 def RunBins(compiler: str, binPaths: set):
     """This function runs all binaries, and collect the output (result) of running
@@ -195,6 +208,9 @@ def RunOracle(arguments: dict, binsPath: str, CFiles: set, _iptDir: str):
     print (f"BIN. GENERATION: {arguments['compilerPath']}...")
     binPaths = GenerateBins(
             CFiles, binsPath, arguments, commands, arguments["compiler"])
+
+    # DEBUG
+    sys.exit()
 
     # For each user-specified compilers to be used in Oracle, generate binary 
     # files for all the generated C test programs.
