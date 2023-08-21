@@ -4,7 +4,6 @@
         "Constant",
         "UnaryOp",
         "BinaryOp",
-        "TypeDecl",
         "Typename",
         "Decl",
         "Goto",
@@ -40,6 +39,7 @@
         "StructRef",
         "Pragma",
         "Cast",
+        "TypeDecl",
         "Union"
     ]
 }

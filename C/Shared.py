@@ -21,7 +21,7 @@ def selectTarget(total_nodes: int, skip_ids: set):
     return target
 
 def treeScanner(
-        ast: dict, depth: int, skip_ids: set, function_names: set,
+        ast: dict, nodeId: int, skip_ids: set, function_names: set,
         nodetypes: dict, labels: set):
     """This function traverse AST tree for the two tasks:
         (1) count the number of nodes.
@@ -29,13 +29,13 @@ def treeScanner(
 
     args:
         ast (dict): ast to scan.
-        depth (int): tree depth.
+        nodeId (int): tree nodeId.
         skip_ids (set): set to hold node ids to skip.
         function_names (set): set to hold function names.
         labels (set): lable IDs from Label nodes.
 
     returns:
-        (int) tree depth.
+        (int) node ID of the current visit.
     """
 
     if ast:
@@ -44,41 +44,61 @@ def treeScanner(
                 if isinstance(value, list):
                     if value:
                         skip_ids = check_skips(
-                                ast, key, depth, skip_ids, 
+                                ast, key, nodeId, skip_ids, 
                                 function_names, nodetypes,
                                 labels)
                         for elem in value:
                             if elem != dict:
-                                skip_ids.add(depth)
-                            depth = treeScanner(
-                                    elem, depth, skip_ids, 
+                                skip_ids.add(nodeId)
+                            nodeId = treeScanner(
+                                    elem, nodeId, skip_ids, 
                                     function_names, nodetypes,
                                     labels) + 1
-                    else:
-                        depth += 1
                 elif isinstance(value, dict):
                     skip_ids = check_skips(
-                            ast, key, depth, skip_ids, 
+                            ast, key, nodeId, skip_ids, 
                             function_names, nodetypes,
                             labels)
-                    depth = treeScanner(
-                            value, depth, skip_ids, 
+                    nodeId = treeScanner(
+                            value, nodeId, skip_ids, 
                             function_names, nodetypes,
                             labels) + 1
-                else:
-                    depth += 1
-        else:
-            depth += 1
     
     skip_ids = check_skips(
-            ast, "", depth, skip_ids, function_names,
+            ast, "", nodeId, skip_ids, function_names,
             nodetypes, labels)
 
-    return depth
+    return nodeId + 1
+
+def assignIdsToNodes(ast: dict, nodeId: int, nodeId2Node: dict):
+    """This function traverses the AST and assigns the node ID,
+    i.e., an order that the function visited the node.
+
+    args:
+        ast (dict): ast to scan.
+        nodeId (int): node ID.
+        nodeId2Node (dict): node ID to actual node object.
+
+    returns:
+        (int) node id of the current visit.
+    """
+
+    if ast:
+        if type(ast) == dict:
+            for key, value in ast.items():
+                if isinstance(value, list):
+                    if value:
+                        for elem in value:
+                            nodeId = assignIdsToNodes(elem, nodeId, nodeId2Node) + 1
+                elif isinstance(value, dict):
+                    nodeId2Node[nodeId] = copy.deepcopy(value)
+                    nodeId = assignIdsToNodes(value, nodeId, nodeId2Node) + 1
+    
+    return nodeId+1
 
 def astEditor(
         ast: dict, target_node_id: int, lang_info: dict,
-        depth: int, skip_ids: set, function_names: set,
+        nodeId: int, skip_ids: set, function_names: set,
         nodetypes: dict, labels: set, edited_nodeId: list):
     """This function traverses the ast and seek for the target node 
     by comparing the passed target node id. Then, if found, edits 
@@ -88,7 +108,7 @@ def astEditor(
         ast (dict): ast to scan.
         target_node_id (int): target node id to edit.
         lang_info (dict): language information.
-        depth (int): tree depth.
+        nodeId (int): tree nodeId.
         skip_ids (set): set of node ids to skip.
         function_names (set): set of function names in the code.
         labels (set): lable IDs from Label nodes.
@@ -96,7 +116,7 @@ def astEditor(
         the id of edited node.
 
     returns:
-        (int) tree depth.
+        (int) tree nodeId.
     """
 
     if ast:
@@ -105,43 +125,37 @@ def astEditor(
                 if isinstance(value, list):
                     if value:
                         for elem in value:
-                            depth = astEditor(
+                            nodeId = astEditor(
                                     elem, target_node_id, 
-                                    lang_info, depth, skip_ids, 
+                                    lang_info, nodeId, skip_ids, 
                                     function_names, nodetypes,
                                     labels, edited_nodeId) + 1
-                    else:
-                        depth += 1
                 elif isinstance(value, dict):
-                    if depth == target_node_id:
+                    if nodeId == target_node_id:
                         is_edited = edit_node(
                                 ast, ast[key], lang_info, 
                                 function_names, nodetypes, 
                                 labels)
                         if is_edited:
-                            edited_nodeId[0] = depth
-                        return depth
-                    depth = astEditor(
+                            edited_nodeId[0] = nodeId
+                        return nodeId
+                    nodeId = astEditor(
                             value, target_node_id, 
-                            lang_info, depth, skip_ids, 
+                            lang_info, nodeId, skip_ids, 
                             function_names, nodetypes,
                             labels, edited_nodeId) + 1
-                else:
-                    depth += 1
-        else:
-            depth += 1
 
-    if '_nodetype' in ast and depth == target_node_id:
+    if '_nodetype' in ast and nodeId == target_node_id:
         is_edited = edit_node(
                 ast, ast, lang_info, function_names, 
                 nodetypes, labels)
         if is_edited:
-            edited_nodeId[0] = depth
+            edited_nodeId[0] = nodeId
 
-    return depth
+    return nodeId + 1
 
 def astEditorForDirectedBuggies(
-        ast: dict, lang_info: dict, depth: int, skip_ids: set,
+        ast: dict, lang_info: dict, nodeId: int, skip_ids: set,
         function_names: set, nodetypes: dict, labels: set, nodeIds: set):
     """This function traverses the ast and seek for the target node 
     by comparing the passed target node id. Then, if found, edits 
@@ -151,13 +165,13 @@ def astEditorForDirectedBuggies(
         ast (dict): ast to scan.
         target_node_id (int): target node id to edit.
         lang_info (dict): language information.
-        depth (int): tree depth.
+        nodeId (int): tree nodeId.
         skip_ids (set): set of node ids to skip.
         function_names (set): set of function names in the code.
         labels (set): lable IDs from Label nodes.
 
     returns:
-        (int) tree depth.
+        (int) tree nodeId.
     """
 
     if ast:
@@ -166,33 +180,33 @@ def astEditorForDirectedBuggies(
                 if isinstance(value, list):
                     if value:
                         for elem in value:
-                            depth = astEditorForDirectedBuggies(
-                                    elem, lang_info, depth, skip_ids, 
+                            nodeId = astEditorForDirectedBuggies(
+                                    elem, lang_info, nodeId, skip_ids, 
                                     function_names, nodetypes, labels, 
                                     nodeIds) + 1
                     else:
-                        depth += 1
+                        nodeId += 1
                 elif isinstance(value, dict):
-                    if depth in nodeIds:
+                    if nodeId in nodeIds:
                         is_edited = edit_node(
                                 ast, ast[key], lang_info, 
                                 function_names, nodetypes, 
                                 labels)
-                    depth = astEditorForDirectedBuggies(
-                            value, lang_info, depth, skip_ids, 
+                    nodeId = astEditorForDirectedBuggies(
+                            value, lang_info, nodeId, skip_ids, 
                             function_names, nodetypes, labels, 
                             nodeIds) + 1
                 else:
-                    depth += 1
+                    nodeId += 1
         else:
-            depth += 1
+            nodeId += 1
 
-    if '_nodetype' in ast and depth in nodeIds:
+    if '_nodetype' in ast and nodeId in nodeIds:
         is_edited = edit_node(
                 ast, ast, lang_info, function_names, 
                 nodetypes, labels)
 
-    return depth
+    return nodeId
 
 def edit_node(
         parent: dict, current: dict, lang_info: dict, function_names: set,
@@ -227,8 +241,6 @@ def edit_node(
         current = modify_unary(parent, current, lang_info)
     elif _nodetype == 'BinaryOp':
         current = modify_binary(parent, current, lang_info)
-    elif _nodetype == 'TypeDecl':
-        current = modify_typeDecl(parent, current, lang_info, function_names)
     elif _nodetype == 'Assignment':
         current = modify_assignment(parent, current, lang_info)
     elif _nodetype == 'Typename':
@@ -239,6 +251,8 @@ def edit_node(
         current = modify_goto(parent, current, lang_info, labels)
     elif _nodetype == 'Continue' or _nodetype == 'Break':
         current = modify_loop_cf(current)
+    #elif _nodetype == 'TypeDecl':
+    #    current = modify_typeDecl(parent, current, lang_info, function_names)
     elif _nodetype in nodetypes['skips']:
         is_edited = False
     else:
@@ -583,21 +597,21 @@ def modify_loop_cf(current: dict):
     return current
 
 def check_skips(
-        node: dict, key: str, depth: int, skip_ids: set, 
+        node: dict, key: str, nodeId: int, skip_ids: set, 
         function_names: set, nodetypes: dict, labels: set):
     """This function checks if we want to skip the node during 
     the mutation. If yes, it adds the node ID in the skip_ids set.
 
     This function is needed because the nodes with identified node types 
     for skipping are too coarse or changing it won't make any changes to 
-    the source code. Thus, identify the node's IDs (AST depth) during the 
+    the source code. Thus, identify the node's IDs (AST nodeId) during the 
     initial tree scanning, and skip them while editing can increase the 
     efficiency of the tool.
 
     args:
         node (dict): node dictionary.
         key (str): key of the node.
-        depth (int): depth of the tree, i.e., a node id.
+        nodeId (int): nodeId of the tree, i.e., a node id.
         skip_ids (set) set of node ids to skip.
         function_names (set): set to hold function names.
         labels (set): lable IDs from Label nodes.
@@ -607,7 +621,7 @@ def check_skips(
     """
 
     if key == 'ext' or key == 'body':
-        skip_ids.add(depth)
+        skip_ids.add(nodeId)
     elif '_nodetype' in node and node['_nodetype'] in nodetypes['skips']:
         if node['_nodetype'] == 'FuncDecl':
             # We do not want to skip function declaration node, 
@@ -624,7 +638,7 @@ def check_skips(
             # We want to keep a track of all label names (IDs).
             labels.add(node['name'])
         else:
-            skip_ids.add(depth)
+            skip_ids.add(nodeId)
 
     return skip_ids
 
