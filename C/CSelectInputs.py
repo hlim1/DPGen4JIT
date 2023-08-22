@@ -3,6 +3,7 @@ import json
 import argparse
 import math
 import subprocess
+import copy
 
 # Code to import modules from other directories.
 # Soruce: https://codeolives.com/2020/01/10/python-reference-module-in-parent-directory/
@@ -32,7 +33,7 @@ def SelectInputs(
     nodeId = Shared.assignIdsToNodes(seedAST, 1, nodeId2Node)
     
     # Extract node objects and convert them into a list that maintains the order of node IDs.
-    seedNodesList = GetNodesInStr(list(nodeId2Node.values()))
+    seedNodesList = copy.deepcopy(GetNodesInStr(list(nodeId2Node.values())))
 
     # Get the list of AST files.
     ASTFiles = os.listdir(f"{controlled_iptDir}/asts")
@@ -48,15 +49,20 @@ def SelectInputs(
             # Get node IDs to actual node objects.
             nodeId2Node = {}
             nodeId = Shared.assignIdsToNodes(ast, 1, nodeId2Node)
-            nodesList = GetNodesInStr(list(nodeId2Node.values()))
-            
+            nodes = copy.deepcopy(list(nodeId2Node.values()))
+            nodesList = copy.deepcopy(GetNodesInStr(nodes))
+            seedCopy = copy.deepcopy(seedNodesList)
             # Compute the nodes alignment between the seed and the new AST.
-            alignment = SEQ.SequenceAlignment(seedNodesList, nodesList)
+            alignment = SEQAlign.SequenceAlignment(seedCopy, nodesList)
+            General.dumpToJson(f"./misc/alignmentWith_{fileId}.json", alignment)
 
             # Compute the similarity.
-            simValue = Select.ComputeSimilarity(alignment, len(seed_id2nodeStr))
+            simValue = Select.ComputeSimilarity(alignment, len(seedNodesList))
 
             astId2SimValue[fileId] = simValue
+
+    # DEBUG
+    General.dumpToJson("./misc/astId2SimValue.json", astId2SimValue)
 
     return
 

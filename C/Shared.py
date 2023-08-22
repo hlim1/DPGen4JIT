@@ -326,14 +326,18 @@ def modify_unary(parent: dict, current: dict, lang_info: dict):
         (dict) modified node.
     """
 
+    # We want to avoid mutating some unary operators, such
+    # as the operators used for pointers and addresses.
+    avoid = ["*", "&", "!"]
+
     operators = lang_info['operators']
 
     node_op = current['op']
 
-    if node_op == "!":
-        print ("WARNING: Unary op is '!'...")
+    if node_op in avoid:
+        print (f"WARNING: Unary op is '{node_op}'...")
         return current
-    
+
     op = ""
     for k, values in operators.items():
         if node_op in values:

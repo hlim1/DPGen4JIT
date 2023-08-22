@@ -209,9 +209,6 @@ def RunOracle(arguments: dict, binsPath: str, CFiles: set, _iptDir: str):
     binPaths = GenerateBins(
             CFiles, binsPath, arguments, commands, arguments["compiler"])
 
-    # DEBUG
-    sys.exit()
-
     # For each user-specified compilers to be used in Oracle, generate binary 
     # files for all the generated C test programs.
     compiler2BinPaths = {}

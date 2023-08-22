@@ -65,7 +65,7 @@ def CRandomGenerator(ast_dict: dict, lang_info: dict):
                             fileId2NodeId[idx]
                         ) = copy.deepcopy(edited_nodeId[0])
                         idx += 1
-    
+
     print (f"Number of generated new ASTs: {len(asts)-1}...")
 
     return asts, fileId2NodeId
