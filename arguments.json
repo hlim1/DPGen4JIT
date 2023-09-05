@@ -3,7 +3,11 @@
     "seed":"",
     "language_info":"",
     "n":0,
-    "jitExePath":"",
-    "jitArguments":"",
-    "jitOff":""
+    "compilerPath":"",
+    "arguments":[],
+    "jitOff":"",
+    "numberOfComps":0,
+    "compiler1":[],
+    "compiler2":[],
+    "compiler3":[]
 }

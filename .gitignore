@@ -5,3 +5,5 @@ __pycache__/
 *.out
 *.swp
 Bugs/
+BugLocalization/
+Benchmarks/

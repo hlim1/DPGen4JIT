@@ -30,7 +30,7 @@ def load_json(json_file: str):
     except IOError as x:
         assert False, f"{json_file} cannot be opened."
 
-def compute_similarity(alignment: dict, seed_size: int):
+def ComputeSimilarity(alignment: dict, seed_size: int):
     """This function computes the jaccard similarity value of two sets,
     i.e., seed ast nodes and comparing ast nodes.
 
@@ -116,7 +116,7 @@ def select_input_ids(
                                 list(seed_id2nodeStr.values()),
                                 list(id2nodeStr.values()))
 
-        sim_value = compute_similarity(alignment, len(seed_id2nodeStr))
+        sim_value = ComputeSimilarity(alignment, len(seed_id2nodeStr))
         ast_id2sim_value[ast_id] = sim_value
 
     # Sort the ast ids in ascending order of similarity values.
@@ -133,20 +133,11 @@ def select_input_ids(
             sorted_nonbuggy_ids.append(ast_id)
         else:
             continue
-            #assert (
-            #    False
-            #), f"ERROR: ast id {ast_id} is neither in buggy nor non-buggy list."
 
     # Compute the number of buggies and non-buggies to select
     # depends on the user specified N.
     n_of_buggies = int(user_n/2)
     n_of_nonbuggies = int(user_n/2)
-    #if user_n % 2 == 0:
-    #    n_of_buggies = int(user_n/2)
-    #    n_of_nonbuggies = int(user_n/2)
-    #else:
-    #    n_of_buggies = int(math.floor(user_n/2))
-    #    n_of_nonbuggies = int(math.ceil(user_n/2))
 
     # If the generated buggy inputs are less or equal to the target number
     # to select, simply select all generated inputs. Otherwise, reverse the
@@ -246,7 +237,7 @@ def move_buggies_from_rand(
                                     list(seed_id2nodeStr.values()),
                                     list(id2nodeStr.values()))
 
-            sim_value = compute_similarity(alignment, len(seed_id2nodeStr))
+            sim_value = ComputeSimilarity(alignment, len(seed_id2nodeStr))
             ast_id2sim_value[ast_id] = sim_value
 
     ast_id2sim_value = sort_by_value(ast_id2sim_value)

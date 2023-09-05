@@ -35,12 +35,12 @@ def Learning(
     """
     
     # Prepare command for executing JIT system with a JIT compilation on.
-    jitOnCommand = [exeCommands["jitExePath"]]
-    jitOnCommand.extend(exeCommands["jitArguments"])
+    jitOnCommand = [exeCommands["compilerPath"]]
+    jitOnCommand.extend(exeCommands["arguments"])
     jitOnCommand.append(None)
     
     # Prepare command for executing JIT system with a JIT compilation off.
-    jitOffCommand = [exeCommands["jitExePath"], exeCommands["jitOff"]]
+    jitOffCommand = [exeCommands["compilerPath"], exeCommands["jitOff"]]
     jitOffCommand.append(None)
 
     # Get the list of files under variants directory.

@@ -37,7 +37,7 @@ def SequenceAlignment(S1: list, S2: list):
     # Thus, we first reverse both sequences.
     S1.reverse()
     S2.reverse()
-   
+    
     Matrix = NeedlemanWunsch(S2, S1)
     reversedOrderAlignedElemIds = ComputeAlignment(Matrix, S1, S2)
 
@@ -153,6 +153,10 @@ def compare_element(e1: str, e2: str):
     returns:
         (int) either match or mismatch score.
     """
+
+    # DEBUG
+    #print (f"e1: {e1}")
+    #print (f"   e2: {e2}")
 
     if e1 == e2:
         return SCORES["MATCH"]

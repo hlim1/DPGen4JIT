@@ -2,6 +2,8 @@ import os, sys
 import json
 import argparse
 import math
+import subprocess
+import copy
 
 # Code to import modules from other directories.
 # Soruce: https://codeolives.com/2020/01/10/python-reference-module-in-parent-directory/
@@ -18,6 +20,12 @@ import DPGen4JIT.Shared.SequenceAlignment as SEQAlign
 import DPGen4JIT.Shared.SelectInputs as SelectInputs
 import DPGen4JIT.C.SourceToSource as C_S2S
 import DPGen4JIT.C.CRandomGenerator as CRandomGen
+import DPGen4JIT.C.CLearning as CLearning
+import DPGen4JIT.C.CDirectedGenerator as CDirected
+import DPGen4JIT.C.CSelectInputs as CSelect
+import DPGen4JIT.Shared.General as General
+
+import DPGen4JIT.C.Shared as Shared
 
 JSEXT = ".js"
 
@@ -60,6 +68,12 @@ def load_json(json_file: str):
     except IOError as x:
         assert False, f"{json_file} cannot be opened."
 
+def dumpToJson(filepath: str, target: dict):
+
+    converted = json.dumps(target, indent=4)
+    with open(filepath, "w") as f:
+        f.write(converted)
+
 def create_dirs(root: str):
     """This function checks the existence of the directories
     and create new ones if one does not exist. Then, sets 
@@ -76,14 +90,24 @@ def create_dirs(root: str):
         os.makedirs(f"{root}/random")
     if not os.path.exists(f"{root}/random/asts"):
         os.makedirs(f"{root}/random/asts")
+    if not os.path.exists(f"{root}/random/bins"):
+        os.makedirs(f"{root}/random/bins")
     if not os.path.exists(f"{root}/controlled"):
         os.makedirs(f"{root}/controlled")
     if not os.path.exists(f"{root}/controlled/asts"):
         os.makedirs(f"{root}/controlled/asts")
+    if not os.path.exists(f"{root}/controlled/bins"):
+        os.makedirs(f"{root}/controlled/bins")
     if not os.path.exists(f"{root}/inputs"):
         os.makedirs(f"{root}/inputs")
     if not os.path.exists(f"{root}/misc"):
         os.makedirs(f"{root}/misc")
+
+###############################################################
+#                                                             #
+#                  FUNCTIONS FOR JAVASCRIPT                   #
+#                                                             #
+###############################################################
 
 def get_random_inputs(
         random_ipt_dir: str, random_ast_dir: str, seed_file_base: str, seed_code: str, 
@@ -252,23 +276,29 @@ def get_inputs_to_analyze(
         selected_nonbuggy_ids,
         n_of_buggies,
         n_of_nonbuggies
-    ) = SelectInputs.select_input_ids(seed_ast, controlled_ipt_dir, buggy_ids, nonbuggy_ids, user_n)
+    ) = SelectInputs.select_input_ids(
+            seed_ast, controlled_ipt_dir, buggy_ids, nonbuggy_ids, user_n)
 
     (
         selected_buggy_ids,
         selected_nonbuggy_ids
     ) = SelectInputs.move_inputs(
-            seed_path, inputs_dir, controlled_ipt_dir, selected_buggy_ids, selected_nonbuggy_ids)
+            seed_path, inputs_dir, controlled_ipt_dir, selected_buggy_ids, 
+            selected_nonbuggy_ids)
 
     if len(selected_buggy_ids) == 1:
         SelectInputs.move_buggies_from_rand(
                 inputs_dir, random_ipt_dir, last_id, rand_buggy_ids,
-                n_of_buggies, len(selected_buggy_ids), selected_buggy_ids, seed_ast)
+                n_of_buggies, len(selected_buggy_ids), selected_buggy_ids, 
+                seed_ast)
 
     return selected_buggy_ids, selected_nonbuggy_ids
 
-def check_selected_inputs(inputs_dir: str, jit_on: list, jit_off: list, selected_b: list, selected_nb: list):
-    """This function checks whether the selected inputs are correctly classified or not.
+def check_selected_inputs(
+        inputs_dir: str, jit_on: list, jit_off: list, 
+        selected_b: list, selected_nb: list):
+    """This function checks whether the selected inputs are correctly 
+    classified or not.
 
     args:
         inputs_dir (str): inputs directory.
@@ -295,7 +325,52 @@ def check_selected_inputs(inputs_dir: str, jit_on: list, jit_off: list, selected
                 False
             ), f"ERROR: selected_nb != nonbuggy_ids. {selected_nb} != {nonbuggy_ids}."
 
+###############################################################
+#                                                             #
+#                      FUNCTIONS FOR C                        #
+#                                                             #
+###############################################################
+
+def GenerateCodesFromASTs(asts: list, srcPath: str, astPath: str):
+    """This function generates and write C codes to .c file 
+    from the AST.
+
+    args:
+        asts (list): list of ASTs without duplicates.
+        srcPath (str): path to directory where C files will be
+        stored.
+        astPath (str): path to directory where AST files will be
+        stored.
+
+    returns:
+        (set) set of C file paths.
+    """
+
+    CFiles = set()
+
+    # zeroth ast is the original ast.
+    for i in range(1, len(asts)):
+        dumpToJson(f"{astPath}/ast__{i}.json", asts[i])
+
+        code = C_S2S.ast_to_c(copy.deepcopy(asts[i]))
+
+        with open(f"{srcPath}/poc_variant__{i}.c", "w") as f:
+            f.write(code)
+
+        CFiles.add(f"{srcPath}/poc_variant__{i}.c")
+
+    return CFiles
+
+###############################################################
+#                                                             #
+#                       MAIN FUNCTIONS                        #
+#                                                             #
+###############################################################
+
 def JSGenerator(arguments: dict):
+    """
+    """
+
     if "root" in arguments:
         root_path = arguments["root"]
     else:
@@ -319,10 +394,10 @@ def JSGenerator(arguments: dict):
     controlled_ast_dir = f"{root_path}/controlled/asts"
     inputs_dir = f"{root_path}/inputs"
 
-    jit_on = [arguments["jitExePath"]]
-    jit_on.extend(arguments["jitArguments"])
+    jit_on = [arguments["compilerPath"]]
+    jit_on.extend(arguments["arguments"])
     jit_on.append(None)
-    jit_off = [arguments["jitExePath"], arguments["jitOff"]]
+    jit_off = [arguments["compilerPath"], arguments["jitOff"]]
     jit_off.append(None)
 
     create_dirs(root_path)
@@ -344,7 +419,8 @@ def JSGenerator(arguments: dict):
                 seed_ast,
                 ipt_id2edit_node_id
             ) = get_random_inputs(
-                    random_ipt_dir, random_ast_dir, seed_file_base, seed_code, user_n, language_info)
+                    random_ipt_dir, random_ast_dir, seed_file_base,
+                    seed_code, user_n, language_info)
         else:
             print ("PHASE 1: Loading inputs randomly.")
         # Classify inputs.
@@ -379,11 +455,12 @@ def JSGenerator(arguments: dict):
         (
             selected_buggy_ids,
             selected_nonbuggy_ids
-        )= get_inputs_to_analyze(
+        ) = get_inputs_to_analyze(
                 seed_path, seed_ast, last_id, inputs_dir, buggy_ids, nonbuggy_ids, user_n,
                 random_ipt_dir, rand_buggy_ids, controlled_ipt_dir)
         # Check to make sure the selected inputs are correctly classified.
-        check_selected_inputs(inputs_dir, jit_on, jit_off, selected_buggy_ids, selected_nonbuggy_ids)
+        check_selected_inputs(
+                inputs_dir, jit_on, jit_off, selected_buggy_ids, selected_nonbuggy_ids)
 
         selected_buggy_ids.sort()
         selected_nonbuggy_ids.sort()
@@ -412,20 +489,43 @@ def CGenerator(arguments):
 
     lang_info = load_json(arguments["language_info"])
 
-    random_ipt_dir = f"{root_path}/random"
-    random_ast_dir = f"{root_path}/random/asts"
-    controlled_ipt_dir = f"{root_path}/controlled"
-    controlled_ast_dir = f"{root_path}/controlled/asts"
+    random_iptDir = f"{root_path}/random"
+    random_astDir = f"{random_iptDir}/asts"
+    random_binsDir = f"{random_iptDir}/bins"
+
+    controlled_iptDir = f"{root_path}/controlled"
+    controlled_astDir = f"{controlled_iptDir}/asts"
+    controlled_binsDir = f"{controlled_iptDir}/bins"
+
     inputs_dir = f"{root_path}/inputs"
 
+    # Create directories.
+    create_dirs(root_path)
     # Convert C source code to python3 'dict' object.
     ast_dict = C_S2S.file_to_dict(seed_path)
+    
     # Generate C code randomly.
-    asts = CRandomGen.CRandomGenerator(ast_dict, lang_info, user_n)
+    asts, fileId2NodeId = CRandomGen.CRandomGenerator(ast_dict, lang_info)
+    assert (
+        len(asts) == len(fileId2NodeId)+1
+    ), f"ERROR: CRandom: len(asts) != len(fileId2NodeId)+1"
+    CFiles = GenerateCodesFromASTs(asts, random_iptDir, random_astDir)
+    # Identify the target node IDs to edit during the directed mutation.
+    nodeIds = CLearning.CLearning(arguments, random_binsDir, CFiles, random_iptDir, fileId2NodeId)
+    print (f"Set of Target Node IDs: {nodeIds}")
+    # Generate C code using the directed method.
+    asts = CDirected.CDirectedGenerator(ast_dict, lang_info, nodeIds, user_n)
+    CFiles = GenerateCodesFromASTs(asts, controlled_iptDir, controlled_astDir)
 
-    for ast in asts:
-        code = C_S2S.ast_to_c(ast)
-        print (code)
+    #CFiles = set()
+    #files = os.listdir(controlled_iptDir)
+    #for f in files:
+    #    if ".c" in f:
+    #        path = f"{controlled_iptDir}/{f}"
+    #        CFiles.add(path)
+
+    #
+    CSelect.SelectInputs(arguments, ast_dict, controlled_binsDir, CFiles, controlled_iptDir)
 
 if __name__ == "__main__":
     arguments_json = argument_parser()
