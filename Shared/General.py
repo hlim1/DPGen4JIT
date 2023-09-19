@@ -7,7 +7,7 @@ def dumpToJson(filepath: str, target: dict):
         with open(filepath, "w") as f:
             f.write(converted)
     except IOError as x:
-        assert False, f"{filePath} cannot be opened."
+        assert False, f"{filepath} cannot be opened."
 
 def loadJson(json_file: str):
         
@@ -17,4 +17,24 @@ def loadJson(json_file: str):
     except IOError as x:
         assert False, f"{json_file} cannot be opened."
 
+def loadTxtFile(filepath: str):
 
+    with open(filepath) as f:
+        lines = f.readlines()
+
+    return lines
+
+def SortDictByKey(dictTosort: dict):
+
+    keysOnly = list(dictTosort.keys())
+    keysOnly.sort()
+    sorted_dict = {i:dictTosort[i] for i in keysOnly}
+
+    return sorted_dict
+
+def SortDictByValues(dictToSort: dict, reverse=True):
+
+    sorted_dict = sorted(
+            dictToSort.items(), key=lambda x:x[1], reverse=reverse)
+
+    return dict(sorted_dict)

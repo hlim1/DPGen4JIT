@@ -102,6 +102,8 @@ def create_dirs(root: str):
         os.makedirs(f"{root}/inputs")
     if not os.path.exists(f"{root}/misc"):
         os.makedirs(f"{root}/misc")
+    if not os.path.exists(f"{root}/coverages"):
+        os.makedirs(f"{root}/coverages")
 
 ###############################################################
 #                                                             #
@@ -517,15 +519,16 @@ def CGenerator(arguments):
     asts = CDirected.CDirectedGenerator(ast_dict, lang_info, nodeIds, user_n)
     CFiles = GenerateCodesFromASTs(asts, controlled_iptDir, controlled_astDir)
 
-    #CFiles = set()
-    #files = os.listdir(controlled_iptDir)
-    #for f in files:
-    #    if ".c" in f:
-    #        path = f"{controlled_iptDir}/{f}"
-    #        CFiles.add(path)
-
     #
-    CSelect.SelectInputs(arguments, ast_dict, controlled_binsDir, CFiles, controlled_iptDir)
+    (
+        selectedBuggyIds,
+        selectedNonBuggyIds
+    ) = CSelect.SelectInputs(
+            arguments, ast_dict, controlled_binsDir, CFiles, controlled_iptDir, 
+            root_path, seed_path, user_n)
+
+    print (f"SELECTED: Buggy IDs: {selectedBuggyIds}")
+    print (f"SELECTED: NonBuggy IDs: {selectedNonBuggyIds}")
 
 if __name__ == "__main__":
     arguments_json = argument_parser()

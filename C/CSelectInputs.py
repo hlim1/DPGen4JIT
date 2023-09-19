@@ -4,6 +4,7 @@ import argparse
 import math
 import subprocess
 import copy
+import shutil
 
 # Code to import modules from other directories.
 # Soruce: https://codeolives.com/2020/01/10/python-reference-module-in-parent-directory/
@@ -19,10 +20,10 @@ import DPGen4JIT.Shared.SelectInputs as Select
 
 def SelectInputs(
         arguments: dict, seedAST: dict, binsPath: str, CFiles: set, 
-        controlled_iptDir: str):
+        controlled_iptDir: str, root: str, seed: str, user_n: int):
     """
     """
-    
+
     # Classify the newly generated programs into buggy or non-buggy programs.
     buggyIds, nonbuggyIds = CLearning.RunOracle(arguments, binsPath, CFiles, controlled_iptDir)
     print (f"DIRECTED: Buggy IDs: {buggyIds}")
@@ -54,17 +55,65 @@ def SelectInputs(
             seedCopy = copy.deepcopy(seedNodesList)
             # Compute the nodes alignment between the seed and the new AST.
             alignment = SEQAlign.SequenceAlignment(seedCopy, nodesList)
-            General.dumpToJson(f"./misc/alignmentWith_{fileId}.json", alignment)
+            General.dumpToJson(f"{root}/misc/alignmentWith_{fileId}.json", alignment)
 
             # Compute the similarity.
             simValue = Select.ComputeSimilarity(alignment, len(seedNodesList))
 
             astId2SimValue[fileId] = simValue
 
-    # DEBUG
-    General.dumpToJson("./misc/astId2SimValue.json", astId2SimValue)
+    selectedIds = SelectIDs(astId2SimValue, buggyIds, nonbuggyIds, user_n)
 
-    return
+    selectedBuggyIds = set()
+    selectedNonBuggyIds = set()
+    
+    final_iptDir = f"{root}/inputs"
+    files = os.listdir(controlled_iptDir)
+    for f in files:
+        if f.endswith('.c'):
+            fileId = int((f.split('__')[-1]).split('.')[0])
+            if fileId in selectedIds:
+                src_path = f"{controlled_iptDir}/{f}"
+                dst_path = f"{final_iptDir}/{f}"
+                shutil.move(src_path, dst_path)
+
+                if fileId in buggyIds:
+                    selectedBuggyIds.add(fileId)
+                else:
+                    selectedNonBuggyIds.add(fileId)
+
+    subprocess.run(['cp', seed, f"{final_iptDir}/poc_original__0.c"])
+
+    # DEBUG
+    General.dumpToJson(f"{root}/misc/astId2SimValue.json", astId2SimValue)
+
+    return selectedBuggyIds, selectedNonBuggyIds
+
+def SelectIDs(astId2SimValue: dict, buggyIds: set, nonbuggyIds: set, user_n: int):
+    """
+    """
+
+    selectedBuggyIds = [0]
+    selectedNonBuggyIds = []
+
+    _astId2SimValue = SortDictByValues(astId2SimValue)
+
+    mid = user_n/2
+
+    buggies_ctn = 1
+    nonbuggies_ctn = 0
+
+    for astId in _astId2SimValue:
+        if astId in buggyIds and buggies_ctn < mid:
+            selectedBuggyIds.append(astId)
+            buggies_ctn += 1
+        elif astId in nonbuggyIds and nonbuggies_ctn < mid:
+            selectedNonBuggyIds.append(astId)
+            nonbuggies_ctn += 1
+
+    selectedIds = selectedBuggyIds + selectedNonBuggyIds
+
+    return selectedIds
 
 def GetNodesInStr(nodesList: list):
     """
@@ -76,3 +125,34 @@ def GetNodesInStr(nodesList: list):
         nodesStrList.append(str(node))
 
     return nodesStrList
+
+def SortDictByKey(dictTosort: dict):
+    """This function sorts dictionary by keys in ascending order.
+
+    args:
+        dictToSort (dict): dictionary to sort.
+
+    returns:
+        (dict) sorted dictionary.
+    """
+
+    keysOnly = list(dictTosort.keys())
+    keysOnly.sort()
+    sorted_dict = {i:dictTosort[i] for i in keysOnly}
+
+    return sorted_dict
+
+def SortDictByValues(dictToSort: dict):
+    """This function sorts dictionary by values in descending order.
+
+    args:
+        dictToSort (dict): dictionary to sort.
+
+    returns:
+        (dict) sorted dictionary.
+    """
+
+    sorted_dict = sorted(
+            dictToSort.items(), key=lambda x:x[1], reverse=True)
+
+    return dict(sorted_dict)

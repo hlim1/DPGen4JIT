@@ -37,6 +37,8 @@ def GenerateBins(CFiles: set, binsPath: str, arguments: dict, commands: list, co
 
         if output.stderr:
             stderrs += f"{output.stderr}\n"
+            if 'error' not in output.stderr:
+                binPaths.add(binPath)
         else:
             binPaths.add(binPath)
 
@@ -95,6 +97,8 @@ def RunBins(compiler: str, binPaths: set):
     total = len(binPaths)
     count = 1
 
+    print (f"RUNNING BIN: Total Number of Binaries: {total}")
+
     for binPath in binPaths:
         if os.path.exists(binPath):
             progress = round((count/total)*100)
@@ -102,15 +106,31 @@ def RunBins(compiler: str, binPaths: set):
             count += 1
 
             fileId = (binPath.split('__')[-1]).split('.')[0]
-            try:
-                output = subprocess.run([binPath], capture_output=True, text=True, timeout=10)
-            except subprocess.TimeoutExpired:
-                print (f"   TIMEOUT: {compiler}: {binPath}...")
+            output = RunSingleBin(compiler, binPath)
+            if output == None:
                 fileIdsToExc.add(fileId)
                 continue
-            fileId2output[fileId] = f"{output.returncode},{output.stdout},{output.stderr}"
+            fileId2output[fileId] = ConstructOutputStr(output)
 
     return fileId2output, fileIdsToExc
+
+def RunSingleBin(compiler: str, binPath: str):
+    """
+    """
+
+    try:
+        output = subprocess.run([binPath], capture_output=True, text=True, timeout=10)
+        # ONLY FOR BUG #16605
+        # output = subprocess.run([f"{binPath}", ";", "echo", "$?"], capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired:
+        print (f"   TIMEOUT: {compiler}: {binPath}...")
+        return None
+
+    return output
+
+def ConstructOutputStr(output):
+
+    return f"returncode:{output.returncode},stdout:{output.stdout.strip()},stderr:{output.stderr.strip()}"
 
 def IdentifyTargetNodeIDs(nonbuggyIds: set, fileId2NodeId: dict):
     """This function identifies the target node IDs to edit during
@@ -132,6 +152,17 @@ def IdentifyTargetNodeIDs(nonbuggyIds: set, fileId2NodeId: dict):
 
     return nodeIds
 
+def _Oracle(target: str, binPaths: set, compiler2BinPaths: dict):
+
+    # First run all binary executables generated from the target (buggy) compiler.
+    target_fileId2output, fileIdsToExc = RunBins(target, binPaths)
+
+    for compiler, paths in compiler2BinPaths.items():
+        fileId2output, fileIdsToExc = RunBins(compiler, paths)
+        for fileId, output in fileId2output.items():
+            if target_fileId2output[fileId] == output:
+                pass
+
 def Oracle(target: str, binPaths: set, compiler2BinPaths: dict):
     """This function checks if the test program is a pass or fail.
 
@@ -146,39 +177,33 @@ def Oracle(target: str, binPaths: set, compiler2BinPaths: dict):
         (set) set of non-buggy file IDs.
     """
 
-    voting = {}
+    outputs = {}
 
     # First run all binary executables generated from the target (buggy) compiler.
     target_fileId2output, fileIdsToExc = RunBins(target, binPaths)
     # Initialize the voting count for each output of each execution with 1.
     for fileId, output in target_fileId2output.items():
-        voting[fileId] = {output:1}
+        outputs[fileId] = [output]
 
     for compiler, paths in compiler2BinPaths.items():
         fileId2output, fileIdsToExc = RunBins(compiler, paths)
         for fileId, output in fileId2output.items():
-            if fileId in voting and fileId not in fileIdsToExc:
-                if output in voting[fileId]:
-                    voting[fileId][output] += 1
-                else:
-                    voting[fileId][output] = 1
+            if fileId in outputs and fileId not in fileIdsToExc:
+                if output not in outputs[fileId]:
+                    outputs[fileId].append(output)
             elif fileId in fileIdsToExc:
-                del voting[fileId]
+                del outputs[fileId]
 
     buggyIds = set()
     nonbuggyIds = set()
-    for fileId, output_info in voting.items():
+    for fileId, output_info in outputs.items():
+        print (f"FILEID2OUTPUT: {fileId}: {output_info}")
         if len(output_info) == 1:
             nonbuggyIds.add(int(fileId))
         elif len(output_info) == 2:
-            for output, count in output_info.items():
-                if (
-                    output == target_fileId2output[fileId] and
-                    count == 1
-                ):
-                    buggyIds.add(int(fileId))
+            buggyIds.add(int(fileId))
         else:
-            pass
+            continue
 
     # General.dumpToJson("./voting.json", voting)
     return buggyIds, nonbuggyIds

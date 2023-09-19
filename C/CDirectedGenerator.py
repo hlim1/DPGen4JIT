@@ -42,20 +42,26 @@ def CDirectedGenerator(ast_dict: dict, lang_info: dict, nodeIds: set, user_n: in
     # C programs.
     nonBuggyAsts = GenerateNonBuggies(
             ast_dict, lang_info, nodeIds, labels, 
-            skip_ids, function_names, nodetypes)
+            skip_ids, function_names, nodetypes,
+            total_nodes)
     # Generate new buggy program ASTs by avoiding the target node IDs.
     buggyAsts = GenerateBuggies(
             ast_dict, lang_info, nodeIds, labels,
             skip_ids, function_names, user_n, total_nodes,
             nodetypes)
 
-    asts = buggyAsts + nonBuggyAsts
+    asts = buggyAsts[:user_n] + nonBuggyAsts[:user_n]
+
+    print (f"DIRECTED: Total # Generated ASTS {len(buggyAsts[:user_n])+len(nonBuggyAsts[:user_n])}")
+    print (f"|__ # of Generated Buggy ASTS {len(buggyAsts[:user_n])}")
+    print (f"|__ # of Generated Non-Buggy ASTS {len(nonBuggyAsts[:user_n])}")
 
     return asts
 
 def GenerateNonBuggies(
         ast_dict: dict, lang_info: dict, nodeIds: set, labels: set,
-        skip_ids: set, function_names: set, nodetypes: dict):
+        skip_ids: set, function_names: set, nodetypes: dict,
+        total_nodes: int):
     """This function generated non-buggy program ASTs.
 
     args:
@@ -64,7 +70,8 @@ def GenerateNonBuggies(
         nodeIds (set): set of target node IDs.
         labels (set): set of C program label names (e.g., LABEL L1).
         skip_ids (set): set of node ids to skip for analysis.
-        function_names (set): set of function names declared in the source code.
+        function_names (set): set of function names declared in
+        the source code.
         nodetypes (dict): node types that we handle and skip.
 
     returns:
@@ -77,7 +84,7 @@ def GenerateNonBuggies(
     idx = 1
     for nodeId in nodeIds:
         dummy = [-1]
-        for j in range(0, 2):
+        for j in range(0, 5):
             ast_copy = copy.deepcopy(ast_dict)
             depth = Shared.astEditor(
                         ast_copy, nodeId, lang_info, 1, 
@@ -112,25 +119,20 @@ def GenerateBuggies(
     # List of generated new ASTs.
     asts = [ast_dict]
 
-    for i in range(1, user_n):
-        if i in skip_ids:
-            continue
-        else:
-            # For each run, select 5 random node IDs, which are not
-            # one of nodes to skip or target, to edit.
-            targetNodeIds = set()
-            for i in range(0, 5):
-                n = random.randint(0, total_nodes)
-                while n in list(skip_ids)+list(nodeIds):
-                    n = random.randint(0, total_nodes)
-                targetNodeIds.add(n)
+    targets = []
+    for i in range(1, total_nodes):
+        if i not in skip_ids and i not in nodeIds:
+            targets.append(i)
 
+    for i in targets:
+        dummy = [-1]
+        for j in range(0, 5):
             ast_copy = copy.deepcopy(ast_dict)
             depth = Shared.astEditorForDirectedBuggies(
-                        ast_copy, lang_info, 1, 
+                        ast_copy, lang_info, i, 
                         skip_ids, function_names,
-                        nodetypes, labels, targetNodeIds)
+                        nodetypes, labels, targets)
             if ast_copy not in asts:
                 asts.append(ast_copy)
-    
+
     return asts[1:]

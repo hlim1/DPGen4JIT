@@ -208,6 +208,61 @@ def astEditorForDirectedBuggies(
 
     return nodeId
 
+def astEditorForNonBuggyMoreThanOneEdit(
+        ast: dict, lang_info: dict, nodeId: int, skip_ids: set,
+        function_names: set, nodetypes: dict, labels: set, nodeIds: set):
+    """This function traverses the ast and seek for the target node 
+    by comparing the passed target node id. Then, if found, edits 
+    (mutates) the node.
+
+    args:
+        ast (dict): ast to scan.
+        target_node_id (int): target node id to edit.
+        lang_info (dict): language information.
+        nodeId (int): tree nodeId.
+        skip_ids (set): set of node ids to skip.
+        function_names (set): set of function names in the code.
+        labels (set): lable IDs from Label nodes.
+
+    returns:
+        (int) tree nodeId.
+    """
+
+    if ast:
+        if type(ast) == dict:
+            for key, value in ast.items():
+                if isinstance(value, list):
+                    if value:
+                        for elem in value:
+                            nodeId = astEditorForDirectedBuggies(
+                                    elem, lang_info, nodeId, skip_ids, 
+                                    function_names, nodetypes, labels, 
+                                    nodeIds) + 1
+                    else:
+                        nodeId += 1
+                elif isinstance(value, dict):
+                    if nodeId in nodeIds:
+                        is_edited = edit_node(
+                                ast, ast[key], lang_info, 
+                                function_names, nodetypes, 
+                                labels)
+                    nodeId = astEditorForDirectedBuggies(
+                            value, lang_info, nodeId, skip_ids, 
+                            function_names, nodetypes, labels, 
+                            nodeIds) + 1
+                else:
+                    nodeId += 1
+        else:
+            nodeId += 1
+
+    if '_nodetype' in ast and nodeId in nodeIds:
+        is_edited = edit_node(
+                ast, ast, lang_info, function_names, 
+                nodetypes, labels)
+
+    return nodeId
+
+
 def edit_node(
         parent: dict, current: dict, lang_info: dict, function_names: set,
         nodetypes: dict, labels: set):
@@ -290,7 +345,8 @@ def modify_number(parent: dict, current: dict):
     elif valType == 'signed char':
         value = random.randint(0, 127)
     elif valType == 'int':
-        value = random.randint(0, 2147483647)
+        #value = random.randint(0, 2147483647)
+        value = random.randint(0, 127)
     elif valType == 'unsigned int':
         value = random.randint(0, 4294967295)
     elif valType == 'short' or valType == 'short int':
@@ -627,7 +683,10 @@ def check_skips(
     if key == 'ext' or key == 'body':
         skip_ids.add(nodeId)
     elif '_nodetype' in node and node['_nodetype'] in nodetypes['skips']:
-        if node['_nodetype'] == 'FuncDecl':
+        if node['_nodetype'] == 'FuncDecl' and 'declname' in node['type']:
+            assert (
+                'declname' in node['type']
+            ), f"ERROR: 'declname' not in node: {node}"
             # We do not want to skip function declaration node, 
             # but we don't want to modify it yet. Thus, we only 
             # keep a track of function names for now.
