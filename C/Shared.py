@@ -154,9 +154,10 @@ def astEditor(
 
     return nodeId + 1
 
-def astEditorForDirectedBuggies(
-        ast: dict, lang_info: dict, nodeId: int, skip_ids: set,
-        function_names: set, nodetypes: dict, labels: set, nodeIds: set):
+def astEditorForMoreThanOneEdit(
+        ast: dict, lang_info: dict, nodeId: int, 
+        skip_ids: set, function_names: set,
+        nodetypes: dict, labels: set, nodeIds: set):
     """This function traverses the ast and seek for the target node 
     by comparing the passed target node id. Then, if found, edits 
     (mutates) the node.
@@ -169,6 +170,8 @@ def astEditorForDirectedBuggies(
         skip_ids (set): set of node ids to skip.
         function_names (set): set of function names in the code.
         labels (set): lable IDs from Label nodes.
+        edited_nodeId (list): a single element list that holds
+        the id of edited node.
 
     returns:
         (int) tree nodeId.
@@ -180,35 +183,35 @@ def astEditorForDirectedBuggies(
                 if isinstance(value, list):
                     if value:
                         for elem in value:
-                            nodeId = astEditorForDirectedBuggies(
-                                    elem, lang_info, nodeId, skip_ids, 
-                                    function_names, nodetypes, labels, 
-                                    nodeIds) + 1
-                    else:
-                        nodeId += 1
+                            nodeId = astEditorForMoreThanOneEdit(
+                                    elem, 
+                                    lang_info, nodeId, skip_ids, 
+                                    function_names, nodetypes,
+                                    labels, nodeIds) + 1
                 elif isinstance(value, dict):
-                    if nodeId in nodeIds:
+                    if nodeId not in skip_ids:
                         is_edited = edit_node(
                                 ast, ast[key], lang_info, 
                                 function_names, nodetypes, 
                                 labels)
-                    nodeId = astEditorForDirectedBuggies(
-                            value, lang_info, nodeId, skip_ids, 
-                            function_names, nodetypes, labels, 
-                            nodeIds) + 1
-                else:
-                    nodeId += 1
-        else:
-            nodeId += 1
+                    nodeId = astEditorForMoreThanOneEdit(
+                            value, 
+                            lang_info, nodeId, skip_ids, 
+                            function_names, nodetypes,
+                            labels, nodeIds) + 1
 
-    if '_nodetype' in ast and nodeId in nodeIds:
+    if (
+            '_nodetype' in ast 
+            and nodeId not in skip_ids
+            and nodeId in nodeIds
+    ):
         is_edited = edit_node(
                 ast, ast, lang_info, function_names, 
                 nodetypes, labels)
 
-    return nodeId
+    return nodeId + 1
 
-def astEditorForNonBuggyMoreThanOneEdit(
+def astEditorForDirectedBuggies(
         ast: dict, lang_info: dict, nodeId: int, skip_ids: set,
         function_names: set, nodetypes: dict, labels: set, nodeIds: set):
     """This function traverses the ast and seek for the target node 

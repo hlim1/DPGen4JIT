@@ -10,7 +10,8 @@ sys.path.append(parentdir)
 
 import C.Shared as Shared
 
-def CDirectedGenerator(ast_dict: dict, lang_info: dict, nodeIds: set, user_n: int):
+def CDirectedGenerator(
+        ast_dict: dict, lang_info: dict, nodeIds: set, user_n: int):
     """This function directed the AST editor to target and mutate
     specific nodes.
 
@@ -62,36 +63,18 @@ def GenerateNonBuggies(
         ast_dict: dict, lang_info: dict, nodeIds: set, labels: set,
         skip_ids: set, function_names: set, nodetypes: dict,
         total_nodes: int):
-    """This function generated non-buggy program ASTs.
-
-    args:
-        ast_dict (dict): seed program's ast.
-        lang_info (dict): C language specification information.
-        nodeIds (set): set of target node IDs.
-        labels (set): set of C program label names (e.g., LABEL L1).
-        skip_ids (set): set of node ids to skip for analysis.
-        function_names (set): set of function names declared in
-        the source code.
-        nodetypes (dict): node types that we handle and skip.
-
-    returns:
-        (list) list of newly generated ASTs.
-    """
 
     # List of generated new ASTs.
     asts = [ast_dict]
 
-    idx = 1
-    for nodeId in nodeIds:
-        dummy = [-1]
-        for j in range(0, 5):
-            ast_copy = copy.deepcopy(ast_dict)
-            depth = Shared.astEditor(
-                        ast_copy, nodeId, lang_info, 1, 
-                        skip_ids, function_names,
-                        nodetypes, labels, dummy)
-            if ast_copy not in asts:
-                asts.append(ast_copy)
+    for i in range(0, 5):
+        ast_copy = copy.deepcopy(ast_dict)
+        depth = Shared.astEditorForMoreThanOneEdit(
+                    ast_copy, lang_info, 1, 
+                    skip_ids, function_names,
+                    nodetypes, labels, nodeIds)
+        if ast_copy not in asts:
+            asts.append(ast_copy)
 
     return asts[1:]
 
