@@ -65,8 +65,13 @@ def SingleJSCodeGenerator(astpath: str, jspath: str):
     returns:
         None.
     """
+    
+    try:
+        subprocess.run([NODEJS, JSCODEGENERATOR, astpath, jspath], capture_output=True, timeout=10)
+    except subprocess.TimeoutExpired:
+        return True
 
-    subprocess.run([NODEJS, JSCODEGENERATOR, astpath, jspath])
+    return False
 
 def ast_editor(
         ast: dict, target_node_id: int, langInfo: dict, id2edit: dict):
@@ -291,6 +296,51 @@ def treeModifier2(
 
     if not is_loop_edit[0] and nodeId not in nodeIdsToAvoid:
         if not ast or ast["type"] in OPERATIONS:
+            modifyElement(ast, langInfo, {}, nodeId)
+
+    return nodeId
+
+def treeModifier3(
+        ast: dict, nodeId: int, targetNodeIds: dict, langInfo: dict, is_loop_edit: list, 
+        jit_on: list, jit_off: list):
+    """
+
+    args:
+        ast (dict): ast tree.
+        nodeId (int): node id.
+        langInfo (dict): language information.
+        is_loop_edit (list): flag to indicate whether the current node is a loop node or not.
+
+    returns
+        (int) current node id.
+    """
+
+    if ast:
+        for key, value in ast.items():
+            # The line to mark the flag that the loop begin.
+            if key == "type" and value == FORLOOP:
+                is_loop_edit[0] = True
+            else:
+                pass
+
+            if isinstance(value, list):
+                for elem in value:
+                    nodeId = treeModifier3(
+                                elem, nodeId, targetNodeIds, langInfo, is_loop_edit,
+                                jit_on, jit_off)+1
+            elif isinstance(value, dict):
+                nodeId = treeModifier3(
+                                value, nodeId, targetNodeIds, langInfo, is_loop_edit,
+                                jit_on, jit_off)+1
+            else:
+                pass
+            
+            # The line to avoid editing the loop condition.
+            if is_loop_edit[0] and key == "test":
+                is_loop_edit[0] = False
+
+    if not is_loop_edit[0]:
+        if not ast or ast["type"] in OPERATIONS and nodeId in targetNodeIds:
             modifyElement(ast, langInfo, {}, nodeId)
 
     return nodeId
@@ -756,7 +806,9 @@ def checkModified(ast_copy: dict, rootPath: str, jitOnCommand: list, jitOffComma
         json.dump(ast_copy, ast_f)
     temporary_js_path = f"{rootPath}/misc/temp_js.js"
 
-    Shared.SingleJSCodeGenerator(temporary_ast_path, temporary_js_path)
+    is_fail = Shared.SingleJSCodeGenerator(temporary_ast_path, temporary_js_path)
+    if is_fail:
+        return None
 
     jitOnCommand[-1] = temporary_js_path
     jitOffCommand[-1] = temporary_js_path

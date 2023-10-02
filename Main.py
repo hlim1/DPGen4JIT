@@ -534,5 +534,5 @@ if __name__ == "__main__":
     arguments_json = argument_parser()
     arguments = load_json(arguments_json)
 
-    # JSGenerator(arguments)
-    CGenerator(arguments)
+    JSGenerator(arguments)
+    #CGenerator(arguments)

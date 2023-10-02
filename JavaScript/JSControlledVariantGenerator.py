@@ -45,11 +45,16 @@ def GenerateInputs(
     """
 
     # Generate user specified number (N) of non-buggy inputs.
-    last_ipt_id = GenerateNonBuggies(
-                    root_path, user_n, 
-                    controlled_ipt_dir, controlled_ast_dir,
-                    target_ast_node_ids, seed_file_base, 
-                    seed_ast, language_info, jit_on, jit_off)
+    #last_ipt_id = GenerateNonBuggies(
+    #                root_path, user_n, 
+    #                controlled_ipt_dir, controlled_ast_dir,
+    #                target_ast_node_ids, seed_file_base, 
+    #                seed_ast, language_info, jit_on, jit_off)
+
+    last_ipt_id = GenerateNonBuggies_MEdits(
+                    root_path, user_n, controlled_ipt_dir, controlled_ast_dir,
+                    target_ast_node_ids,
+                    seed_file_base, seed_ast, language_info, jit_on, jit_off)
 
     # Generate user specified number (N) of buggy inputs.
     last_ipt_id = GenerateBuggies(
@@ -100,6 +105,71 @@ def GenerateNonBuggies(
             # This dummy is not being used in anywhere.
             dummy = Shared.ast_editor(ast_copy, target_node_id, language_info, id2edit)
             is_buggy = checkGenerated(ast_copy, rootPath, jitOnCommand, jitOffCommand)
+
+            if is_buggy == None:
+                continue
+
+            if (
+                    ast_copy != seed_ast and 
+                    ast_copy not in astVariants
+                    and not is_buggy
+            ):
+                astVariants.append(ast_copy)
+                generated += 1
+
+    astFilePaths = []
+    ipt_id = 1
+    for ast in astVariants:
+        variantFilePath = f"{astDirPath}/{fileBase}-variant__{ipt_id}.json"
+        astFilePaths.append(variantFilePath)
+        with open(variantFilePath, 'w') as ast_f:
+            json.dump(ast, ast_f)
+        ipt_id += 1
+
+    # Generate JS code variants based on the generated AST variants.
+    Shared.JSCodeGenerator(inputsPath, astFilePaths)
+
+    return ipt_id
+
+def GenerateNonBuggies_MEdits(
+        rootPath: str, user_n: int, inputsPath: str, astDirPath: str, 
+        targetNodeIds: list, fileBase: str, seed_ast: dict, 
+        language_info: dict, jitOnCommand: list, jitOffCommand: list):
+    """This function (attempts to) generate user specified N number of buggy inputs.
+
+    args:
+        rootPath (str): root directory path.
+        user_n (int): user-specified number to generate N number of variants.
+        inputsPath (str): directory where all input variants will be stored.
+        astDirPath (str): directory where all asts will be stored.
+        targetNodeIds (list): list of target node ids to edit.
+        fileBase (str): name of the original input file without the extension.
+        seed_ast (dict): AST of the original input program.
+        language_info (dict): information about the JS language, such as types and methods, etc.
+        jitOnCommand (list): command to execute VM with jit compilation on.
+        jitOffCommand (list): command to execute VM with jit compilation off.
+        last_ipt_id (int): lastly generated input id.
+
+    returns:
+        None.
+    """
+
+    astVariants = []
+
+    generated = 0
+    for i in range(1, 201):
+        if generated == user_n:
+            break
+        else:
+            ast_copy = copy.deepcopy(seed_ast)
+            is_loop_edit = [False]
+            dummy = Shared.treeModifier3(
+                        ast_copy, 1, targetNodeIds, language_info, is_loop_edit, 
+                        jitOnCommand, jitOffCommand)
+            is_buggy = checkGenerated(ast_copy, rootPath, jitOnCommand, jitOffCommand)
+
+            if is_buggy == None:
+                continue
 
             if (
                     ast_copy != seed_ast and 
@@ -159,6 +229,9 @@ def GenerateBuggies(
                         ast_copy, 1, targetNodeIds, language_info, is_loop_edit,
                         jitOnCommand, jitOffCommand)
             is_buggy = checkGenerated(ast_copy, rootPath, jitOnCommand, jitOffCommand)
+
+            if is_buggy == None:
+                continue
 
             if (
                     ast_copy != seed_ast and 
@@ -306,8 +379,10 @@ def checkGenerated(ast_copy: dict, rootPath: str, jitOnCommand: list, jitOffComm
     with open(temporary_ast_path, 'w') as ast_f:
         json.dump(ast_copy, ast_f)
     temporary_js_path = f"{rootPath}/misc/ctr_js_temp.js"
-
-    Shared.SingleJSCodeGenerator(temporary_ast_path, temporary_js_path)
+    
+    is_fail = Shared.SingleJSCodeGenerator(temporary_ast_path, temporary_js_path)
+    if is_fail:
+        return None
 
     jitOnCommand[-1] = temporary_js_path
     jitOffCommand[-1] = temporary_js_path
